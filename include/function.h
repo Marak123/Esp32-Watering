@@ -11,24 +11,6 @@ const int Month_30[4] = {4, 6, 9, 11};
 const int Month_31[7] = {1, 3, 5, 7, 8, 10, 12};
 const String Month_Word[12] = {"Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"};
 
-<<<<<<< HEAD
-=======
-//Obliczanie rozmiaru tablicy w skrocie
-// template <typename T>
-// int arraySize(T array[]){
-//   int arraySize = 0;
-//   T arUse = 0;
-//   try{
-//     array[arraySize];
-//     arraySize++;
-//   }catch(int error){
-//     return arraySize;
-//   }
-
-//   return 0;
-// }
-
->>>>>>> 7b880c5d7a3970a34fe0ad3e1e883cba59f433d8
 ///Tworzenie tablicy dla clienta JavaScript
 String createJSArray(int lengthStringArray, Variables *var)
 {
@@ -90,7 +72,8 @@ public:
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   }
 
-  void getTime(){
+  void getTime()
+  {
     if (!getLocalTime(&timeinfo))
     {
       Serial.println("Błąd pobierania czasu.");
@@ -158,17 +141,20 @@ class FTP
   ESP32_FTPClient ftp;
 
 public:
-  FTP(char ftp_server[], char ftp_user[], char ftp_password[]) : ftp(ftp_server, ftp_user, ftp_password, 5000, 2){}
+  FTP(char ftp_server[], char ftp_user[], char ftp_password[]) : ftp(ftp_server, ftp_user, ftp_password, 5000, 2) {}
 
-  bool Connect(bool message = false){
+  bool Connect(bool message = false)
+  {
     ftp.OpenConnection();
 
-    for (int i=0; i < 15; i++){
-      if (ftp.isConnected()) return true;
+    for (int i = 0; i < 15; i++)
+    {
+      if (ftp.isConnected())
+        return true;
       delay(1000);
-<<<<<<< HEAD
     }
-    if(message) Serial.println("Nie można otworzyć połączenia z serwerem FTP.");
+    if (message)
+      Serial.println("Nie można otworzyć połączenia z serwerem FTP.");
 
     return false;
   }
@@ -181,17 +167,21 @@ public:
     FileName.toCharArray(FN, FileName.length());
     message.toCharArray(MS, message.length());
 
-    if (!ftp.isConnected()){
+    if (!ftp.isConnected())
+    {
       Serial.println("Połączenie z serwerem FTP nie jest otwarte.");
       return false;
     }
-    try{
+    try
+    {
       ftp.InitFile("Type A");
       ftp.AppendFile(FN);
       ftp.Write(MS);
       ftp.CloseFile();
       return true;
-    }catch(String error){
+    }
+    catch (String error)
+    {
       Serial.print("Wystąpił problem: ");
       Serial.println(error);
       return false;
@@ -200,8 +190,10 @@ public:
 };
 
 //Porownywanie daty ze struktury DATE
-bool compareDate(DATE minimalDate, DATE maximalDate){
-  if ((minimalDate.Day > maximalDate.Day && minimalDate.Month > maximalDate.Month) || minimalDate.Year > maximalDate.Year) return false;
+bool compareDate(DATE minimalDate, DATE maximalDate)
+{
+  if ((minimalDate.Day > maximalDate.Day && minimalDate.Month > maximalDate.Month) || minimalDate.Year > maximalDate.Year)
+    return false;
   return true;
 }
 
@@ -220,64 +212,6 @@ String generateWebToken()
     randomNumber = rand() % wordLength;
     token += wordToken[randomNumber];
   }
-
-=======
-    }
-    if(message) Serial.println("Nie można otworzyć połączenia z serwerem FTP.");
-
-    return false;
-  }
-
-  bool writeFile(String FileName, String message)
-  {
-    char FN[FileName.length()];
-    char MS[message.length()];
-
-    FileName.toCharArray(FN, FileName.length());
-    message.toCharArray(MS, message.length());
-
-    if (!ftp.isConnected()){
-      Serial.println("Połączenie z serwerem FTP nie jest otwarte.");
-      return false;
-    }
-    try{
-      ftp.InitFile("Type A");
-      ftp.AppendFile(FN);
-      ftp.Write(MS);
-      ftp.CloseFile();
-      return true;
-    }catch(String error){
-      Serial.print("Wystąpił problem: ");
-      Serial.println(error);
-      return false;
-    }
-  }
-};
-
-//Porownywanie daty ze struktury DATE
-bool compareDate(DATE minimalDate, DATE maximalDate){
-  if ((minimalDate.Day > maximalDate.Day && minimalDate.Month > maximalDate.Month) || minimalDate.Year > maximalDate.Year) return false;
-  return true;
-}
-
-//Generowanie tokenu użytkownika
-String generateWebToken()
-{
-  srand(time(NULL));
-  String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&*?LPOIUYTREWQASDFGHJKMNBVCXZ";
-  String token = "";
-  int wordLength = wordToken.length();
-
-  int randomNumber = 0;
-  const int maxNb = rand() % 40 + 40;
-  for (int i = 0; i < maxNb; i++)
-  {
-    randomNumber = rand() % wordLength;
-    token += wordToken[randomNumber];
-  }
-
->>>>>>> 7b880c5d7a3970a34fe0ad3e1e883cba59f433d8
-  return token;
 }
 
 //Tworzenie konta użytkownika
