@@ -212,6 +212,7 @@ String generateWebToken()
     randomNumber = rand() % wordLength;
     token += wordToken[randomNumber];
   }
+  return token;
 }
 
 //Tworzenie konta użytkownika
