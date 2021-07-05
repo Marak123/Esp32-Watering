@@ -1,0 +1,75 @@
+.status .sts-menu {
+  width: 100%;
+  height: 20px;
+  display: flex;
+}
+.status .sts-menu > div {
+  height: 100%;
+  background-color: #003647;
+  border: 2px solid #002a36;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.status .sts-menu > div:first-child {
+  border-top-left-radius: 20px;
+  width: 40%;
+}
+.status .sts-menu > div:last-child {
+  border-top-right-radius: 20px;
+  width: 60%;
+}
+.status .sts-menu > div p {
+  margin: 0;
+  color: var(--max-light);
+  font-size: 13px;
+  font-weight: bold;
+}
+.status .sts-list {
+  width: 100%;
+  height: 30px;
+}
+.status .sts-list > div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+.status .sts-list > div > div {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #002a36;
+  border: 2px solid #003647;
+}
+.status .sts-list > div > div:first-child {
+  width: 40%;
+}
+.status .sts-list > div > div:last-child {
+  width: 60%;
+}
+.status .sts-list > div > div p {
+  color: var(--max-light);
+  margin: 0;
+  font-size: 15px;
+}
+.status .sts-list > div > div span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  -webkit-border-radius: 50%;
+  -moz-border-radius: 50%;
+  -ms-border-radius: 50%;
+  -o-border-radius: 50%;
+  -webkit-border-radius: 50%;
+}
+.status .sts-list > div > div span.on {
+  background-color: #00ff00;
+}
+.status .sts-list > div > div span.off {
+  background-color: red;
+}
+.status .sts-list > div > div span + p {
+  font-size: 10px;
+  margin-left: 5px;
+}/*# sourceMappingURL=status.css.map */

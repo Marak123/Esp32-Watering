@@ -1,0 +1,114 @@
+@import url("https://fonts.googleapis.com/css2?family=Signika+Negative:wght@700&display=swap");
+
+.plan {
+    max-width: 650px;
+    .pins-container {
+        // background-color: red;
+        width: 80%;
+        max-width: 400px;
+        height: 30%;
+        // max-height: 130px;
+        margin: 0 auto;
+        overflow-x: auto;
+        overflow-y: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        > div {
+            width: 10%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 5px 2px;
+            > div.pin-name {
+                > p {
+                    font-size: 12px;
+                    font-weight: bold;
+                    font-family: "Signika Negative", sans-serif;
+                    color: var(--max-light);
+                    margin: 0;
+                    text-align: center;
+                    height: 15px;
+                }
+            }
+            div.selector {
+                width: 15px;
+                height: 15px;
+                margin-bottom: 10px;
+            }
+        }
+    }
+    div.array-down {
+        margin: 10px auto 10px auto;
+        width: 20px;
+        i {
+            color: var(--max-light);
+            font-size: 20px;
+        }
+    }
+    .switchPower {
+        width: 40%;
+        max-width: 150px;
+        height: 50px;
+        margin: 5px 0;
+    }
+
+    .timePicker {
+        width: 80%;
+        max-width: 300px;
+        height: 38px;
+        margin: 5px 0;
+        // margin-top: 50px;
+    }
+    .submit-button {
+        width: 40%;
+        max-width: 150px;
+        height: 10%;
+        max-height: 50px;
+        margin: 0px 0;
+        button {
+            margin: 0 auto;
+        }
+    }
+    div.plan-menu {
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin: 10px 0;
+        div {
+            margin: 0;
+        }
+        .selected {
+            font-weight: bold;
+            font-size: 20px;
+        }
+    }
+    hr {
+        width: 90%;
+        height: 2px;
+        background-color: aliceblue !important;
+        border: 0 !important;
+        line-height: 1 !important;
+        opacity: 0.5 !important;
+        margin: 10px 0;
+    }
+    div.dataPicker {
+        margin: 10px 0 !important;
+        width: 85% !important;
+        height: 40px !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        .weekLine{
+            width: 100%;
+            height: 100%;
+        }
+        .hidden{
+            display: none !important;
+        }
+    }
+}

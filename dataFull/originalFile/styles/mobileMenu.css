@@ -1,0 +1,276 @@
+/*main-mb menu*/
+
+.main-mb-menu {
+  float: left;
+  position: absolute;
+  height: 200%;
+  width: 500px;
+  z-index: 100;
+  transition: all 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  transform-origin: 100% 0;
+  transform: translate(-390px, -25px);
+  -webkit-transform: translate(-390px, -25px);
+  -moz-transform: translate(-390px, -25px);
+  -ms-transform: translate(-390px, -25px);
+  -o-transform: translate(-390px, -25px);
+}
+
+.main-mb-menu.open {
+  transform: translate(-150px) skew(-5.5deg);
+  -webkit-transform: translate(-150px) skew(-5.5deg);
+  -moz-transform: translate(-150px) skew(-5.5deg);
+  -ms-transform: translate(-150px) skew(-5.5deg);
+  -o-transform: translate(-150px) skew(-5.5deg);
+}
+
+.main-mb-menu.open .main-mb-menu-form {
+  transform: skewX(-25deg);
+}
+
+.main-mb-menu.open .main-mb-menu-form:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: #2980B9;
+  box-shadow: 0px 0px 6px 1px rgba(93, 173, 226, 0.7);
+}
+
+.main-mb-menu-form {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 101;
+  transition: all 0.2s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  transform-origin: 100% 0;
+  transform: skewX(-38deg);
+}
+
+.main-mb-menu-form.seeBackground {
+  background-color: #283747;
+  transition: background-color 0.3s ease-in;
+  -webkit-transition: background-color 0.3s ease-in;
+  -moz-transition: background-color 0.3s ease-in;
+  -ms-transition: background-color 0.3s ease-in;
+  -o-transition: background-color 0.3s ease-in;
+}
+
+.main-mb-menu.open .main-mb-menu-btn {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0s, visibility 0s;
+}
+
+/*main-mb menu content*/
+
+.main-mb-menu-content {
+  position: relative;
+  padding: 35px 55px 35px 120px;
+  font: normal 16px/1.25 "Open Sans";
+  transform: skewX(5.5deg);
+  -webkit-transform: skewX(5.5deg);
+  -moz-transform: skewX(5.5deg);
+  -ms-transform: skewX(5.5deg);
+  -o-transform: skewX(5.5deg);
+}
+
+.main-mb-menu.open .main-mb-menu-content {
+  z-index: 102;
+}
+
+.main-mb-menu-logo img {
+  opacity: 0;
+  width: 150px;
+  z-index: 10;
+  float: right;
+  position: relative;
+  top: -60px;
+  left: 20px;
+  transform: scaleX(-1) rotate(-20deg);
+  -webkit-transform: scaleX(-1) rotate(-20deg);
+  -moz-transform: scaleX(-1) rotate(-20deg);
+  -ms-transform: scaleX(-1) rotate(-20deg);
+  -o-transform: scaleX(-1) rotate(-20deg);
+}
+
+.main-mb-menu.open .main-mb-menu-logo img {
+  opacity: 1;
+  transition: opacity 0.5s ease-in 0.3s;
+}
+
+.main-mb-menu-nav {
+  margin-top: 35px;
+  position: relative;
+  top: -140px;
+  transform: scale(0.8);
+  -webkit-transform: scale(0.8);
+  -moz-transform: scale(0.8);
+  -ms-transform: scale(0.8);
+  -o-transform: scale(0.8);
+}
+
+.main-mb-menu.open .main-mb-menu-nav a {
+  transform: translate(0, 0);
+  transition: color 0.2s ease-in-out 0s, opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1;
+}
+
+.main-mb-menu-nav a {
+  opacity: 0;
+  display: inline-block;
+  padding: 10px 15px;
+  font-size: 20px;
+  color: #5DADE2;
+  transform: translate(0, 100%);
+}
+
+.main-mb-menu-nav i {
+  color: #fff;
+  transition: color 0.2s ease-in-out;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a:hover {
+  color: #3498DB;
+  /*i don't care*/
+  transition-delay: 0s !important;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.orange {
+  transition-delay: 0.4s;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.yellow {
+  transition-delay: 0.5s;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.green {
+  transition-delay: 0.6s;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.purple {
+  transition-delay: 0.7s;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.red {
+  transition-delay: 0.8s;
+}
+
+.main-mb-menu.open .main-mb-menu-nav a.blue {
+  transition-delay: 0.9s;
+}
+
+.main-mb-menu-nav a.orange:hover i {
+  color: #D35400;
+}
+
+.main-mb-menu-nav a.yellow:hover i {
+  color: #F5AB35;
+}
+
+.main-mb-menu-nav a.green:hover i {
+  color: #00B16A;
+}
+
+.main-mb-menu-nav a.purple:hover i {
+  color: #9A12B3;
+}
+
+.main-mb-menu-nav a.red:hover i {
+  color: #F64747;
+}
+
+.main-mb-menu-nav a.blue:hover i {
+  color: #2cbaf8;
+}
+
+.main-mb-menu-nav a.orange-act i {
+  color: #D35400;
+}
+
+.main-mb-menu-nav a.yellow-act i {
+  color: #F5AB35;
+}
+
+.main-mb-menu-nav a.green-act i {
+  color: #00B16A;
+}
+
+.main-mb-menu-nav a.purple-act i {
+  color: #9A12B3;
+}
+
+.main-mb-menu-nav a.red-act i {
+  color: #F64747;
+}
+
+.main-mb-menu-nav a.blue-act i {
+  color: #2cbaf8;
+}
+
+/*toggle button*/
+
+.main-mb-menu-btn {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  top: 35px;
+  right: 7.5%;
+  line-height: 32px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid #AEB6BF;
+  transition: opacity 0.4s cubic-bezier(0.95, 0.05, 0.795, 0.035), visibility 0.4s cubic-bezier(0.95, 0.05, 0.795, 0.035);
+  transform: skew(38deg) rotate(38deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.main-mb-menu-btn i {
+  transform: rotate(-38deg);
+  color: #AEB6BF;
+}
+
+.main-mb-menu-btn:hover i {
+  color: #3498DB;
+}
+
+/*close button*/
+
+.main-mb-menu.open .main-mb-menu-close {
+  opacity: 1;
+  transition: color 0.2s ease, opacity 1s ease 1s, ;
+  -webkit-transition: color 0.2s ease, opacity 1s ease 1s, ;
+  -moz-transition: color 0.2s ease, opacity 1s ease 1s, ;
+  -ms-transition: color 0.2s ease, opacity 1s ease 1s, ;
+  -o-transition: color 0.2s ease, opacity 1s ease 1s, ;
+  transform: translate(52%, -200%) scale(0.8);
+  -webkit-transform: translate(52%, -200%) scale(0.8);
+  -moz-transform: translate(52%, -200%) scale(0.8);
+  -ms-transform: translate(52%, -200%) scale(0.8);
+  -o-transform: translate(52%, -200%) scale(0.8);
+}
+
+.main-mb-menu-close {
+  opacity: 0;
+  display: inline-block;
+  margin-top: 5px;
+  margin-left: 15px;
+  font-size: 18px;
+  color: #BDC3C7;
+  transform: translate(52%, -200%) scale(0.8);
+  -webkit-transform: translate(52%, -200%) scale(0.8);
+  -moz-transform: translate(52%, -200%) scale(0.8);
+  -ms-transform: translate(52%, -200%) scale(0.8);
+  -o-transform: translate(52%, -200%) scale(0.8);
+}
+
+.main-mb-menu-close:hover {
+  color: #A569BD;
+}
+
+/*# sourceMappingURL=mbMenu.css.map */
