@@ -83,4 +83,10 @@ $(".whatClick").click(function () {
 
     $(".main-content > div").css("display", "none");
     $("." + getId).css("display", "flex");
+
+    if($(this).parent().attr('desktop')){
+        console.log('swor')
+        $('.navigation .menu-bar li').removeClass('select')
+        $(this).addClass('select')
+    }
 })

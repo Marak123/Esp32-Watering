@@ -36,86 +36,10 @@
         <div id='stars2'></div>
         <div id='stars3'></div>
     </div> -->
-    <div class="setting-window">
-        <ul class="setting-window-top-menu">
-            <li class="select" id="user-sett">Użytkownik</li>
-            <li id="access-sett">Zabezpieczenia</li>
-        </ul>
-        <div class="content">
-            <div></div>
-            <div class="user-sett">
-                <div class="free"></div>
-                <div class="user-name">
-                    <h2>Nazwa użytkownika</h2>
-                    <input type="text" name="newUsername" placeholder="Nowa nazwa użytkownika">
-                    <input type="password" name="password" placeholder="Hasło">
-                    <div class="submit-button col-4">
-                        <button class="button-sbm" id="delaySubmit">Zatwierdź</button>
-                    </div>
-                </div>
-                <div class="free"></div>
-                <div class="password-user">
-                    <h2>Hasło</h2>
-                    <input type="password" name="oldPassword" placeholder="Podaj aktualne hasło">
-                    <input type="password" name="newPassword" placeholder="Podaj nowe hasło">
-                    <input type="password" name="repeat-newPassword" placeholder="Powtórz nowe hasło">
-                    <div class="submit-button col-4">
-                        <button class="button-sbm" id="delaySubmit">Zatwierdź</button>
-                    </div>
-                </div>
-                <div class="page-theme">
-                    <div class="mode-page col-3 h-50">
-                        <div class="wrappery">
-                            <input type="checkbox" name="checkbox" class="switch-theme" mode="dark">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="access-sett d-flex">
-                <div class="exp-date">
-                    <p>Ilość dni:</p>
-                    <input type="number" value="30" placeholder="Ilość dni">
-                    <p>Ilość minut:</p>
-                    <div class="timePicker">
-                        <div class="row">
-                            <div class='col-12'>
-                                <form action="" method="post">
-                                    <div class="form-group">
-                                        <div class="input-group date 24h-form">
-                                            <input type="text" name="end_time" placeholder="Ilosc minut"
-                                                class="form-control" title="" required id="id_end_time_3" />
-                                            <div class="input-group-addon input-group-append">
-                                                <div class="input-group-text">
-                                                    <i class="glyphicon glyphicon-time far fa-clock"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="submit-button col-4">
-                        <button class="button-sbm" id="delaySubmit">Zatwierdź</button>
-                    </div>
-                </div>
-                <div class="mobile-token ">
-                    <div id="mobileToken"></div>
-                    <input type="number" placeholder="Ilosc dni ważności" value="365">
-                    <div class="submit-button col-4">
-                        <button class="button-sbm" id="delaySubmit">Zatwierdź</button>
-                    </div>
-                </div>
-                <div class="free"></div>
-                <div class="free"></div>
-            </div>
-        </div>
-    </div>
-    <div class="blure">&nbsp;</div>
     <header class="container-fluid topBar">
         <nav class="navigation col-5 col-lg-9 d-lg-flex align-items-lg-center justify-content-lg-center">
-            <ul class="menu-bar d-none d-lg-flex m-0 align-items-lg-center justify-content-lg-center">
-                <li class="h-75 whatClick" id="power-now">Natychmiast</li>
+            <ul class="menu-bar d-none d-lg-flex m-0 align-items-lg-center justify-content-lg-center" desktop="true">
+                <li class="h-75 whatClick select" id="power-now" >Natychmiast</li>
                 <li class="h-75 whatClick" id="delay">Z opóżnieniem</li>
                 <li class="h-75 whatClick" id="plan">Zaplanuj</li>
                 <li class="h-75 whatClick" id="temperature">Temperatura</li>
@@ -323,11 +247,6 @@
 </body>
 
 <script>
-    const allPins = [[13, "Pin 13", "power"], [14, "Pin 14", "power"], [15, "Pin 15", "power"], [16, "Pin 16", "power"], [17, "Pin 17", "power"], [18, "Pin 18", "power"], [19, "Pin 19", "power"], [20, "Pin 20", "power"], [21, "Pin 21", "temperature"], [22, "Pin 22", "air"], [23, "Pin 23", "heat"], [24, "Pin 24", "temperature"], [25, "Pin 25", "air"], [26, "Pin 26", "heat"]];
-    const elementsPins = [[0, false], [1, true], [2, false], [3, true], [4, true], [5, false], [6, false], [7, false]];
-    const tmpEm = [[8, 9, 10], [11, 12, 13]];
-    const temperatureEle = [[8, "21", true, false, "22.6"], [11, "23.2", true, false, "25.9"]];
-    const listActionElm = [[[11, 1, 2022], [20, 49], false, 4], [[19, 4, 2021], [8, 9], true, 7], [[18, 9, 2020], [5, 24], true, 0], [[18, 9, 2020], [7, 24], false, 0], [[17, 5, 2021], [19, 29], true, 6]];
 </script>
 
 <script crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
@@ -357,6 +276,7 @@
 <script src="scripts/scriptsOF/timepicker/demo.js"></script>
 <script src="scripts/scriptsOF/weekpicker/jquery.weekLine.min.js"></script>
 
+<script src="scripts/scripts/main.js"></script>
 <script src="scripts/scripts/delay.js"></script>
 <script src="scripts/scripts/plan.js"></script>
 <script src="scripts/scripts/powerNow.js"></script>
@@ -364,6 +284,6 @@
 <script src="scripts/scripts/temperature.js"></script>
 <script src="scripts/scripts/timetable.js"></script>
 <script src="scripts/scripts/setting.js"></script>
-<script src="scripts/scripts/webSocket.js"></script>
+<script src="scripts/scripts/connect.js"></script>
 
 </html>

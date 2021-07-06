@@ -1,0 +1,295 @@
+/* @import url('https://rsms.me/inter/inter-ui.css'); */
+
+@import url('inter-ui.css');
+::selection {
+    background: #2D2F36;
+}
+
+::-webkit-selection {
+    background: #2D2F36;
+}
+
+::-moz-selection {
+    background: #2D2F36;
+}
+
+body {
+    font-family: 'Inter UI', sans-serif;
+    margin: 0;
+}
+
+@media (max-width: 767px) {
+    .page {
+        height: auto;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+    }
+}
+
+html, body{
+    width: 100%;
+    height: 100%;
+}
+
+*{
+    margin: 0;
+    padding: 0;
+}
+
+#loadingPage{
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    background-color: rgb(47, 47, 47);
+    z-index: 5;
+}
+
+.container {
+    display: flex;
+    height: 320px;
+    margin: 0 auto;
+    width: 640px;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+}
+
+@media (max-width: 767px) {
+    .container {
+        flex-direction: column;
+        height: 630px;
+        width: 320px;
+    }
+}
+
+.left {
+    background: white;
+    height: calc(100% - 40px);
+    top: 20px;
+    position: relative;
+    width: 50%;
+}
+
+@media (max-width: 767px) {
+    .left {
+        height: 100%;
+        left: 20px;
+        width: calc(100% - 40px);
+        max-height: 270px;
+    }
+}
+
+.login {
+    font-size: 50px;
+    font-weight: 900;
+    margin: 50px 40px 40px;
+}
+
+.eula {
+    color: #999;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 40px;
+}
+
+.right {
+    background: #474A59;
+    box-shadow: 0px 0px 40px 16px rgba(0, 0, 0, 0.22);
+    color: #F1F1F2;
+    position: relative;
+    width: 50%;
+    height: 320px;
+}
+
+@media (max-width: 767px) {
+    .right {
+        flex-shrink: 0;
+        height: 100%;
+        width: 100%;
+        max-height: 350px;
+    }
+}
+
+svg {
+    position: absolute;
+    width: 320px;
+}
+
+path {
+    fill: none;
+    stroke: url(#linearGradient);
+    ;
+    stroke-width: 4;
+    stroke-dasharray: 240 1386;
+}
+
+.form {
+    margin: 40px;
+    position: absolute;
+}
+
+label {
+    color: #c2c2c5;
+    display: block;
+    font-size: 14px;
+    height: 16px;
+    margin-top: 20px;
+    margin-bottom: 5px;
+    pointer-events: none;
+}
+
+label:nth-child(1) {
+    transform: translateY(37px) translateX(24px) scale(1.2);
+    -webkit-transform: translateY(37px) translateX(24px) scale(1.2);
+    -moz-transform: translateY(37px) translateX(24px) scale(1.2);
+    -ms-transform: translateY(37px) translateX(24px) scale(1.2);
+    -o-transform: translateY(37px) translateX(24px) scale(1.2);
+}
+
+label:nth-child(3) {
+    transform: translateY(24px) translateX(24px) scale(1.2);
+    -webkit-transform: translateY(24px) translateX(24px) scale(1.2);
+    -moz-transform: translateY(24px) translateX(24px) scale(1.2);
+    -ms-transform: translateY(24px) translateX(24px) scale(1.2);
+    -o-transform: translateY(24px) translateX(24px) scale(1.2);
+}
+
+input {
+    background: transparent;
+    border: 0;
+    color: #f2f2f2;
+    font-size: 20px;
+    height: 30px;
+    line-height: 30px;
+    outline: none !important;
+    width: 100%;
+}
+
+input:nth-child(2) {
+    margin-top: 8px;
+}
+
+input:nth-child(4) {
+    margin-top: -5px;
+}
+
+input::-moz-focus-inner {
+    border: 0;
+}
+
+#submit {
+    color: #707075;
+    margin-top: 40px;
+    transition: color 300ms;
+}
+
+#submit:focus {
+    color: #f2f2f2;
+}
+
+#submit:active {
+    color: #d0d0d2;
+}
+
+@media only screen and (max-width: 500px) {
+    .right {
+        transform: scale(1.1);
+        -webkit-transform: scale(1.1);
+        -moz-transform: scale(1.1);
+        -ms-transform: scale(1.1);
+        -o-transform: scale(1.1);
+    }
+}
+
+.labelBottom1 {
+    animation: labelBack1 1s;
+    -webkit-animation: labelBack1 1s;
+}
+
+.labelBottom2 {
+    animation: labelBack2 1s;
+    -webkit-animation: labelBack2 1s;
+}
+
+.labelTop1 {
+    animation: label1 1s forwards;
+    -webkit-animation: label1 1s forwards;
+}
+
+.labelTop2 {
+    animation: label2 1s forwards;
+    -webkit-animation: label2 1s forwards;
+}
+
+@keyframes label1 {
+    from {
+        transform: translateY(37px) translateX(24px) scale(1.2);
+        -webkit-transform: translateY(37px) translateX(24px) scale(1.2);
+        -moz-transform: translateY(37px) translateX(24px) scale(1.2);
+        -ms-transform: translateY(37px) translateX(24px) scale(1.2);
+        -o-transform: translateY(37px) translateX(24px) scale(1.2);
+    }
+    to {
+        transform: translateY(17px) translateX(-22px) scale(0.8);
+        -webkit-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -moz-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -ms-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -o-transform: translateY(17px) translateX(-22px) scale(0.8);
+    }
+}
+
+@keyframes label2 {
+    from {
+        transform: translateY(24px) translateX(24px) scale(1.2);
+        -webkit-transform: translateY(24px) translateX(24px) scale(1.2);
+        -moz-transform: translateY(24px) translateX(24px) scale(1.2);
+        -ms-transform: translateY(24px) translateX(24px) scale(1.2);
+        -o-transform: translateY(24px) translateX(24px) scale(1.2);
+    }
+    to {
+        transform: translateY(5px) translateX(-23px) scale(0.8);
+        -webkit-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -moz-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -ms-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -o-transform: translateY(5px) translateX(-23px) scale(0.8);
+    }
+}
+
+@keyframes labelBack1 {
+    from {
+        transform: translateY(17px) translateX(-22px) scale(0.8);
+        -webkit-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -moz-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -ms-transform: translateY(17px) translateX(-22px) scale(0.8);
+        -o-transform: translateY(17px) translateX(-22px) scale(0.8);
+    }
+    to {
+        transform: translateY(37px) translateX(24px) scale(1.2);
+        -webkit-transform: translateY(37px) translateX(24px) scale(1.2);
+        -moz-transform: translateY(37px) translateX(24px) scale(1.2);
+        -ms-transform: translateY(37px) translateX(24px) scale(1.2);
+        -o-transform: translateY(37px) translateX(24px) scale(1.2);
+    }
+}
+
+@keyframes labelBack2 {
+    from {
+        transform: translateY(5px) translateX(-23px) scale(0.8);
+        -webkit-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -moz-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -ms-transform: translateY(5px) translateX(-23px) scale(0.8);
+        -o-transform: translateY(5px) translateX(-23px) scale(0.8);
+    }
+    to {
+        transform: translateY(24px) translateX(24px) scale(1.2);
+        -webkit-transform: translateY(24px) translateX(24px) scale(1.2);
+        -moz-transform: translateY(24px) translateX(24px) scale(1.2);
+        -ms-transform: translateY(24px) translateX(24px) scale(1.2);
+        -o-transform: translateY(24px) translateX(24px) scale(1.2);
+    }
+}

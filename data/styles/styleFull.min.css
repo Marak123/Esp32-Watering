@@ -242,7 +242,6 @@
 
 .power-now>div .text-info {
     font-weight: bold;
-    font-family: "Balsamiq Sans", cursive;
     letter-spacing: 2px;
     display: flex;
     justify-content: center;
@@ -250,7 +249,8 @@
     font-size: 3.5vw;
     width: auto;
     height: auto;
-    margin-left: 10px
+    margin-left: 10px;
+    color: var(--powerNow-color) !important;
 }
 
 .power-now>div .text-info .info-pin {
@@ -371,6 +371,8 @@
     --bnt-hover-bg-color-tB: #2b2bff;
     --bnt-default-color: #2c2c2c;
     --bnt-hover-color: white;
+    --powerNow-color: rgb(0, 169, 11);
+    --menu-bar-color-select: rgb(255, 149, 0);
     --bg-switch: #f0f0f0;
     --bg-chechbox: #fff;
     --border-checkbox: #d1d6ee;
@@ -379,13 +381,57 @@
     --tick-checkbox: #000;
     --tooltip-edit-bg: #838383;
     --window-bg: #3b3b3b;
-    --timetable-legtend-bg: #3a3a3a;
-    --timetable-legtend-border: #191919;
+    --timetable-legend-bg: #3a3a3a;
+    --timetable-legend-border: #191919;
     --timetable-list-table-bg: #191919;
     --timetable-list-table-border: #3a3a3a;
     --status-menu-bg: #191919;
     --status-menu-border: #3a3a3a;
     --input-bg: rgb(212, 212, 212);
+    --list-color: #001c25;
+    --light-list-color: #013f53;
+    --list-border-color: #000e12;
+    --weakLine-color: rgb(35, 35, 35);
+    --weakLine-color-hover: rgb(22, 22, 22);
+    --weakLine-color-select: rgb(22, 22, 22);
+    --messageAlert-success-bg: rgb(0, 222, 0);
+    --messageAlert-failed-bg: rgb(189, 0, 0);
+    --messageAlert-color: rgb(255, 255, 255);
+}
+
+[data-mode=light] {
+    --max-light: rgb(255, 255, 255);
+    --max-dark: rgb(0, 0, 0);
+    --transparent-bg: rgba(131, 131, 131, 0.6);
+    --bg-page: radial-gradient(farthest-corner at 40px 40px, #0180ff 0, #a63dd7 100%);
+    /* --bg-page: radial-gradient(farthest-corner at 40px 40px, #dedfe0 0, #9f9f9f 100%); */
+    --bnt-default-bg-color-tB: #d3d3d3;
+    --bnt-hover-bg-color-tB: #2b2bff;
+    --bnt-default-color: #4b4b4b;
+    --bnt-hover-color: white;
+    --powerNow-color: rgb(0, 169, 11);
+    --menu-bar-color-select: rgb(255, 149, 0);
+    --bg-switch: #f0f0f0;
+    --bg-chechbox: #fff;
+    --border-checkbox: #d1d6ee;
+    --border-hover-checkbox: #bbc1e1;
+    --border-active-checkbox: #838383;
+    --tick-checkbox: #000;
+    --tooltip-edit-bg: #838383;
+    --window-bg: #3b3b3b;
+    --timetable-legend-bg: #666666;
+    --timetable-legend-border: #2f2f2f;
+    --timetable-list-table-bg: #3f3f3f;
+    --timetable-list-table-border: #747474;
+    --status-menu-bg: #191919;
+    --status-menu-border: #3a3a3a;
+    --input-bg: rgb(212, 212, 212);
+    --list-color: #02455c;
+    --light-list-color: #006e93;
+    --list-border-color: #004355;
+    --weakLine-color: rgb(56, 56, 56);
+    --weakLine-color-hover: rgb(39, 39, 39);
+    --weakLine-color-select: rgb(39, 39, 39);
 }
 
 * {
@@ -402,7 +448,8 @@ body, html {
     line-height: 0;
     display: flex;
     justify-content: center;
-    /* align-items: center; */
+    overflow: -moz-hidden-unscrollable;
+    overflow: hidden;
 }
 
 ul {
@@ -476,13 +523,13 @@ small {
     font-size: 60%;
     padding: 0 5px;
     color: var(--max-light);
-    background-color: #001c25;
+    background-color: var(--list-color);
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     margin: 0;
-    border: 2px solid #000e12
+    border: 2px solid var(--list-border-color)
 }
 
 .temperature .selectPins div p {
@@ -490,7 +537,7 @@ small {
 }
 
 .temperature .selectPins div.select {
-    background-color: #013f53
+    background-color: var(--light-list-color)
 }
 
 .temperature .containerPins {
@@ -691,8 +738,8 @@ small {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: var(--timetable-legtend-bg);
-    border: 2px solid var(--timetable-legtend-border)
+    background-color: var(--timetable-legend-bg);
+    border: 2px solid var(--timetable-legend-border)
 }
 
 .timetable .main .list .legend>div:nth-child(1) {
@@ -1796,14 +1843,14 @@ div.logout {
     color: Gray !important;
     text-decoration: none !important;
     padding: 5px !important;
-    font-size: 14px !important
+    font-size: 15px !important
 }
 
 .weekDays a:hover {
     border-style: solid !important;
     border-width: 1px 1px 2px 1px !important;
     text-decoration: none !important;
-    color: Gray !important
+    color: var(--weakLine-color-hover) !important
 }
 
 .weekDays .selectedDay {
@@ -1813,8 +1860,7 @@ div.logout {
 
 .weekDays a {
     padding: 2px 3px !important;
-    color: Gray !important;
-    background: linear-gradient(to bottom, #3b3b3b 0, #202020 100%) repeat scroll 0 0 rgba(0, 0, 0, 0) !important;
+    color: var(--weakLine-color) !important;
     text-decoration: none !important;
     font-family: "courier new" !important
 }
@@ -1839,7 +1885,6 @@ div.logout {
 
 .weekDays a:hover {
     border-style: solid !important;
-    border-radius: 20% !important;
     border-width: 2px !important;
     border-color: #6e9a52 !important;
     text-decoration: none !important;
@@ -1848,11 +1893,10 @@ div.logout {
 
 .weekDays .selectedDay {
     border-style: solid !important;
-    border-radius: 20% !important;
     border-width: 1px !important;
     border-color: gray !important;
     color: #6e9a52 !important;
-    padding: 2px !important
+    padding: 2px !important;
 }
 
 .main-mb-menu {
@@ -2127,7 +2171,6 @@ div.logout {
     height: -moz-fit-content;
     height: fit-content;
     display: inline-flex;
-    background-color: var(--transparent-bg);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     align-items: center;
@@ -2145,6 +2188,10 @@ div.logout {
     position: relative;
     cursor: pointer;
     white-space: nowrap
+}
+
+.menu-bar li.select {
+    color: var(--menu-bar-color-select)
 }
 
 .menu-bar li::before {

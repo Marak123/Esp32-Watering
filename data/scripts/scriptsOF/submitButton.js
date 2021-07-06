@@ -11,9 +11,10 @@ function animateButton(e) {
     else errorSendButton(this)
 };
 
-$(".button-sbm").click(animateButton);
+$(".submit-button").delegate(".button-sbm", 'click', animateButton);
 
 function successSendButton(classNm) {
+    messageSee('Pomyślnie wysłano żądanie', 'success')
     $(classNm).removeClass("animate-spin")
     $(classNm).addClass("animate-withoutSpin")
     $(classNm).addClass("success")
@@ -24,7 +25,7 @@ function successSendButton(classNm) {
 }
 
 function errorSendButton(classNm) {
-    console.log(classNm)
+    messageSee('Nie udało się wysłać żądania', 'failed')
     $(classNm).removeClass("animate-spin")
     $(classNm).addClass("animate-withoutSpin")
     $(classNm).addClass("error")

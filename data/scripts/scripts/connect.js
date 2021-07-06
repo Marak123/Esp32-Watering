@@ -3,6 +3,8 @@ function heatClick() { }
 function setTemerature() { }
 function removeElementAction(indxElm) { }
 function submitDate(cTO, elemID) { }
+function getToken() { return "cn38h4r8m930m8r7dx934hn78m53dh9r" }
+function generateNewToken() { }
 
 function getCookie() {
     return Cookies.get("token")
