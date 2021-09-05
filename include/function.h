@@ -3,32 +3,105 @@
 
 #include <SPIFFS.h>
 #include <time.h>
+#include <Arduino.h>
 
-#include "variablesSchemat.h"
+#include "ownTime.h"
 #include "variables.h"
+#include "struct.h"
 
-const int Month_30[4] = {4, 6, 9, 11};
-const int Month_31[7] = {1, 3, 5, 7, 8, 10, 12};
-const String Month_Word[12] = {"Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"};
-
-///Tworzenie tablicy dla clienta JavaScript
-String createJSArray(int lengthStringArray, Variables *var)
+void deepSleep(String message = "", int second = 60)
 {
-  String arrayForJS = "var elements = [";
-  for (int i = 0; i < lengthStringArray; i++)
-  {
-    arrayForJS += "[\'" + var->pins[i][0] + "\', " + var->pinsPower[i] + ", \'" + var->pins[i][1] + "\']";
-    if (i != lengthStringArray - 1)
-      arrayForJS += ", ";
+  Serial.println(message);
+  esp_sleep_enable_timer_wakeup(second * 1000000);
+  esp_deep_sleep_start();
+}
+
+namespace arrCreator{
+  String allPins(){
+    String arrJS = "var allPins = [";
+    for (int i = 0; i < varPins.pins.size(); i++) arrJS += String("[") + varPins.pins[i].nrPin + ", \"" + varPins.pins[i].namePin + "\", \"" + varPins.pins[i].actionPin + "\"],";
+    arrJS = arrJS.substring(0, arrJS.length() - 1);
+    arrJS += String("];");
+    return arrJS;
   }
-  return arrayForJS + "]";
+  String elementsPins(){
+    String arrJS = String("var elementsPins = [");
+    for (int i = 0; i < varPins.powerPins.size(); i++) arrJS += String("[") + varPins.powerPins[i].idPin + ", " + varPins.powerPins[i].power + "],";
+    arrJS = arrJS.substring(0, arrJS.length() - 1);
+    arrJS += String("];");
+    return arrJS;
+  }
+  String tmpEm(){
+    String arrJS = String("var tmpEm = [");
+    for (int i = 0; i < varPins.tempPins.size(); i++) arrJS += String("[") + varPins.tempPins[i].idPinTemp + ", " + varPins.tempPins[i].idPinAir + ", " + varPins.tempPins[i].idPinHeat + "],";
+    arrJS = arrJS.substring(0, arrJS.length() - 1);
+    arrJS += String("];");
+    return arrJS;
+  }
+  String temperatureEle(){
+    String arrJS = String("var temperatureEle = [");
+    for (int i = 0; i < varPins.tempData.size(); i++) arrJS += String("[") + varPins.tempData[i].idTemp + ", \"" + varPins.tempData[i].primTemp + "\", " + varPins.tempData[i].powerAir + ", " + varPins.tempData[i].powerHeat + ", \"" + varPins.tempData[i].curlTemp + "\"],";
+    arrJS = arrJS.substring(0, arrJS.length() - 1);
+    arrJS += String("];");
+    return arrJS;
+  }
+  String listActionElm(bool sameArray=false){
+    String arrJS = "";
+    if(!sameArray) arrJS = String("var listActionElm = [");
+    else arrJS = String("[");
+    if(varPins.actionList.size() != 0){
+      for (int i = 0; i < varPins.actionList.size(); i++) arrJS += String("[[") + varPins.actionList[i].time.day + ", " + varPins.actionList[i].time.month + ", " + varPins.actionList[i].time.year + "], [" + varPins.actionList[i].time.hours + ", " + varPins.actionList[i].time.minute + "], " + varPins.actionList[i].action + ", " + varPins.actionList[i].idPin + "],";
+      arrJS = arrJS.substring(0, arrJS.length() - 1);
+    }
+    if(!sameArray) arrJS += String("];");
+    else arrJS += String("]");
+    return arrJS;
+  }
+
+
+  String allArray(){
+    return allPins() + "\n" + elementsPins() + "\n" + tmpEm() + "\n" + temperatureEle() + "\n" + listActionElm();
+  }
+}
+
+//Konwersja tablicy z parametru http do tablicy cpp
+std::vector<int> convArray(String par)
+{
+  String har = "";
+  std::vector<int> arr;
+  for(int i=0; i < par.length(); i++){
+    if (isDigit(par[i])) har += par[i];
+    if (par[i] == ',' || i == par.length() - 1){
+      arr.push_back(har.toInt());
+      Serial.print(har);
+      Serial.print(" - ");
+      har = "";
+      if (i == par.length() - 1) break;
+    }
+  }
+  Serial.println("");
+  return arr;
 }
 
 ///Inicjacja pinow
-void initialPins(std::vector<std::vector<String>> array)
+void initialPins(std::vector<s_pin> array, std::vector<s_powerPin> power)
 {
   for (int i = 0; i < array.size(); i++)
-    pinMode(array[i][0].toInt(), OUTPUT);
+  {
+    if (array[i].actionPin == "power" || array[i].actionPin == "air" || array[i].actionPin == "heat")
+    {
+      pinMode(array[i].nrPin, OUTPUT);
+      for (int j = 0; j < power.size(); j++)
+      {
+        if (power[j].idPin == array[i].idPin)
+        {
+          digitalWrite(array[i].nrPin, power[j].power);
+        }
+      }
+    }
+    else if (array[i].actionPin == "temperature")
+      pinMode(array[i].nrPin, INPUT);
+  }
 }
 
 ///Wyszukiwanie slow w tablicy
@@ -55,85 +128,12 @@ void initWiFi(const char *ssid, const char *password)
 ///Inicjacja odczytu z plikow
 void initSPIFFS()
 {
-  if (!SPIFFS.begin(true))
+  if (!SPIFFS.begin(true, "/data", 100))
   {
     Serial.println("SPIFFS Mount Failed");
     return;
   }
 }
-
-//Klasa odpowiedzialna za dostarczanie czasu
-class Time
-{
-public:
-  struct tm timeinfo;
-  Time(const char *ntpServer, const long gmtOffset_sec, const int daylightOffset_sec)
-  {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  }
-
-  void getTime()
-  {
-    if (!getLocalTime(&timeinfo))
-    {
-      Serial.println("Błąd pobierania czasu.");
-      return;
-    }
-  }
-
-  int Hour()
-  {
-    char timeHour[3];
-    strftime(timeHour, 3, "%H", &timeinfo);
-    return atoi(timeHour);
-  }
-  int Minute()
-  {
-    char timeHour[3];
-    strftime(timeHour, 3, "%M", &timeinfo);
-    return atoi(timeHour);
-  }
-  int Second()
-  {
-    char timeHour[3];
-    strftime(timeHour, 3, "%S", &timeinfo);
-    return atoi(timeHour);
-  }
-  int Day()
-  {
-    char timeHour[3];
-    strftime(timeHour, 3, "%d", &timeinfo);
-    return atoi(timeHour);
-  }
-  String weekDay()
-  {
-    char timeHour[10];
-    strftime(timeHour, 10, "%d", &timeinfo);
-    return timeHour;
-  }
-  String Month()
-  {
-    char timeHour[10];
-    strftime(timeHour, 10, "%B", &timeinfo);
-    return timeHour;
-  }
-  int nrMonth()
-  {
-    String month[] = {"January", "February", "March", "April", "May", "	June", "July", "August", "September", "October", "November", "December"};
-    char timeHour[10];
-    strftime(timeHour, 10, "%B", &timeinfo);
-    for (int i = 0; i < 12; i++)
-      if (String(timeHour) == month[i])
-        return i + 1;
-    return -1;
-  }
-  int Year()
-  {
-    char timeHour[4];
-    strftime(timeHour, 4, "%B", &timeinfo);
-    return atoi(timeHour);
-  }
-};
 
 //Zapis plikow na serwer FTP
 class FTP
@@ -189,19 +189,11 @@ public:
   }
 };
 
-//Porownywanie daty ze struktury DATE
-bool compareDate(DATE minimalDate, DATE maximalDate)
-{
-  if ((minimalDate.Day > maximalDate.Day && minimalDate.Month > maximalDate.Month) || minimalDate.Year > maximalDate.Year)
-    return false;
-  return true;
-}
-
 //Generowanie tokenu użytkownika
-String generateWebToken()
+struct s_session generateWebToken()
 {
   srand(time(NULL));
-  String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&*?LPOIUYTREWQASDFGHJKMNBVCXZ";
+  String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&?LPOIUYTREWQASDFGHJKMNBVCXZ";
   String token = "";
   int wordLength = wordToken.length();
 
@@ -212,22 +204,60 @@ String generateWebToken()
     randomNumber = rand() % wordLength;
     token += wordToken[randomNumber];
   }
-  return token;
+
+  struct s_session tkNew;
+  struct s_date dt;
+
+  dt.day = TimeS.Day();
+  dt.month = TimeS.Month();
+  dt.year = TimeS.Year();
+  dt.hours = TimeS.Hour();
+  dt.minute = TimeS.Minute();
+
+  tkNew.token = token;
+  tkNew.expDate = dt;
+
+  return tkNew;
 }
 
 //Tworzenie konta użytkownika
-AccountSchema createAccount(Time *t, String username, String password)
+struct s_AccountSchema createAccount(String username, String password)
 {
-  struct DATE createDate;
-  createDate.Day = t->Day();
-  createDate.Month = t->nrMonth();
-  createDate.Year = t->Year();
+  struct s_date createDate;
+  createDate.day = TimeS.Day();
+  createDate.month = TimeS.Month();
+  createDate.year = TimeS.Year();
 
-  struct AccountSchema defaultAccount;
+  struct s_AccountSchema defaultAccount;
   defaultAccount.username = username;
   defaultAccount.password = password;
   defaultAccount.dateCreate = createDate;
   return defaultAccount;
+}
+
+namespace pins
+{
+  bool changePower(int pinNR, bool power)
+  {
+    int idPin = -1;
+    for (int i = 0; i < varPins.pins.size(); i++)
+    {
+      if (varPins.pins[i].nrPin == pinNR)
+      {
+        idPin = varPins.pins[i].idPin;
+        break;
+      }
+    }
+    for (int i = 0; i < varPins.powerPins.size(); i++)
+    {
+      if (varPins.powerPins[i].idPin == idPin)
+      {
+        varPins.powerPins[i].power = power;
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
 #endif

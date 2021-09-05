@@ -1,22 +1,44 @@
-#ifndef VARIABLES
-#define VARIABLES
+#ifndef VARS_H
+#define VARS_H
 
-#include "variablesSchemat.h"
+#include "struct.h"
 
-const char *ssid = "SAGEM_1A85";    //Nazwa Routera WIFI
-const char *password = "63D34E7A";   //Haslo do Router WIFI
+struct s_wifi dataWifi = {
+    "SAGEM_1A85",
+    "63D34E7A"
+}; //Wifi dane konfiguracyjne
 
-char ftp_serverIP[] = "192.168.1.12";  //IP Serwera ftp
-char ftp_username[] = "esp32";  //Nazwa użytkownika klienta ftp
-char ftp_password[] = "haslo";  //Hasło użytkownika klienta ftp
+struct s_ftpServer dataFtp; //Serwer ftp dane konfiguracyjne
 
 //Konta użytkownikow
-std::vector<AccountSchema> Accounts;
+std::vector<struct s_AccountSchema> Accounts;
 
-//Struktora zmiennych odnoszaca sie do uzywanych pinow i jakie nazwy maja nosic
-Variables var = {
-    {{"13", "pin 13"}, {"12", "pin 12"}, {"14", "pin 14"}, {"27", "pin 27"}, {"26", "pin 26"}, {"25", "pin 25"}, {"33", "pin 33"}, {"32", "pin 32"}},  //Uzywane piny. Formula {numer uzywanego pinu, nazwa jaki ma byc wyswietlana przy tym pinie(dowolna, aby nie za dluga)}
-    {false, false, false, false, false, false, false, false}     ///Status pinu na poczatku. false - wylaczony(bez napiecia),  true - wlaczony(z napieciem).    ///UWAGA!! Ilosc stanow(true lub false) musi byc taka sama jak ilosc uzywanych pinow
+s_pin pin1 = {12, "Pin 12", "power", 0};
+s_pin pin2 = {13, "Pin 13", "power", 1};
+s_pin pin3 = {14, "Pin 14", "power", 2};
+s_pin pin4 = {15, "Pin 15", "power", 3};
+
+s_pin pin5 = {16, "Pin 16", "temperature", 4};
+s_pin pin6 = {17, "Pin 17", "heat", 5};
+s_pin pin7 = {18, "Pin 18", "air", 6};
+
+s_powerPin pow1 = {0, false, 0};
+s_powerPin pow2 = {1, true, 1};
+s_powerPin pow3 = {2, false, 2};
+s_powerPin pow4 = {3, true, 3};
+
+s_tempPin temp1 = {16, 5, 17, 6, 18, 7, 0};
+
+s_tempData tempData1 = {0, 6, false, 7, true, 22.5, 24.0};
+
+s_actionList action1 = {{20, 12, 2021, 18, 54}, true, 3, 15};
+
+s_Var varPins = {
+    {pin1, pin2, pin3, pin4, pin5, pin6, pin7},
+    {pow1, pow2, pow3, pow4},
+    {temp1},
+    {tempData1},
+    {action1}
 };
 
 #endif

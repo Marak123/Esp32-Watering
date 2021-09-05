@@ -7,84 +7,182 @@
 //#include <mongocxx/client.hpp>
 //#include <SFML/Network.hpp>
 
-#include "function.h"
-#include "variablesSchemat.h"
-#include "WebSocket.h"
+#include <ownTime.h>
+#include <struct.h>
+// #include <configFile.h>
+#include <function.h>
+#include <WebServer.h>
 
 //Dolaczanie zmiennych
-#include "variables.h"
-
-int long lCnt = 0;
-unsigned long lStart;
-
-//Zmienne ustawien czasu
-const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;
-const int daylightOffset_sec = 3600;
-
-//Inicjacja Klasy z Czasem
-Time t("pool.ntp.org", 3600, 3600);
+#include <variables.h>
 
 //Inicjacja Klasy Połączenia FTP
-FTP ftp(ftp_serverIP, ftp_username, ftp_password);
+FTP ftp(dataFtp.addrIP, dataFtp.username, dataFtp.password);
 
 //Wywołanie klasy WebSocket
-WebSocket websocket(&var, &t, &ftp);
+WebServer webserver(&varPins, &ftp);
+
+// confFile config("/configFile.json");
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println("\n\n");
 
+
   //Inicjacja odczytu danych z pliku
   initSPIFFS();
 
+  //Ładowanie danych konfiguracyjnych z pliku json
+  // config.loadConfig();
+
   //Inicjacja pinow
-  initialPins(var.pins);
+  initialPins(varPins.pins, varPins.powerPins);
+
+  Serial.print("SSID: ");
+  Serial.println(dataWifi.SSID);
+  Serial.print("PASS: ");
+  Serial.println(dataWifi.password);
 
   //Inicjacja WiFi
-  initWiFi(ssid, password);
+  initWiFi(dataWifi.SSID, dataWifi.password);
 
-  //Pobieranie daty i godziny z serwera
-  t.getTime();
+  Serial.println();
+  Serial.println("----------------Zaczynam wypisywanie Czas ---------------");
+  Serial.print(String(TimeS.Day()));
+  Serial.print(" - ");
+  Serial.print(String(TimeS.Month()));
+  Serial.print(" - ");
+  Serial.print(String(TimeS.Year()));
+  Serial.print(" - ");
+  Serial.print(String(TimeS.Hour()));
+  Serial.print(" - ");
+  Serial.println(String(TimeS.Minute()));  
+  Serial.print(" - ");
+  Serial.println(String(TimeS.weekDay()));
+  Serial.println("----------------Koncze wypisywanie Czas ---------------");
+  Serial.println();
 
   //Łączenie z serwerem ftp
   //ftp.Connect(true);
 
   //Inicjacja WebSocket
-  websocket.initWebSocket();
+  webserver.initWebSocket();
 
   //Inicjacja Serwera
-  websocket.ServerInit();
+  webserver.ServerInit();
 
   //Tworzenie konta domyślnego użytkownika strony
-  Accounts.push_back(createAccount(&t, "admin", "admin"));
+  Accounts.push_back(createAccount("admin", "admin"));
 }
+
+void prt(int i)
+{
+  Serial.println();
+  Serial.print("+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+==+=+=");
+  Serial.print(String(varPins.actionList[i].nrPin));
+  Serial.println("=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=");
+
+  bool ff = varPins.actionList[i].time.hours <= TimeS.Hour() && varPins.actionList[i].time.minute <= TimeS.Minute() && varPins.actionList[i].time.day <= TimeS.Day() && varPins.actionList[i].time.month <= TimeS.Month() && varPins.actionList[i].time.year <= TimeS.Year();
+  Serial.print("Warunek: ");
+  Serial.println(String(ff));
+
+  Serial.print("Hour: ");
+  Serial.print(varPins.actionList[i].time.hours);
+  Serial.print(" - ");
+  Serial.println(TimeS.Hour());
+
+  Serial.print("Minute: ");
+  Serial.print(varPins.actionList[i].time.minute);
+  Serial.print(" - ");
+  Serial.println(TimeS.Minute());
+
+  Serial.print("Day: ");
+  Serial.print(varPins.actionList[i].time.day);
+  Serial.print(" - ");
+  Serial.println(TimeS.Day());
+
+  Serial.print("Month: ");
+  Serial.print(varPins.actionList[i].time.month);
+  Serial.print(" - ");
+  Serial.println(TimeS.Month());
+
+  Serial.print("Year: ");
+  Serial.print(varPins.actionList[i].time.year);
+  Serial.print(" - ");
+  Serial.println(TimeS.Year());
+
+  Serial.println("----------------------------------------------------------------------------------------------");
+  Serial.println();
+}
+
+bool change = false;
+bool Cnt = false;
+unsigned long Start = 0;
 void loop()
 {
-  if (lCnt == 0)
-    lStart = millis();
-  lCnt++;
-  if ((millis() - lStart) >= 60000)
-  {
-    lStart = 0;
-    lCnt = 0;
-
-    //std::vector<int> whatPlace;
-    // for(int i=0; i < var.withDelay.size(); i++){
-    //   Serial.print("Dziala Petla: ");
-    //   Serial.println(i);
-    //   if(var.withDelay[i].hour == timeClient.getHours() + 1)
-    //     if (var.withDelay[i].minute == timeClient.getMinutes()){
-    //       for(int j=0; j < var.withDelay[i].pins.size(); j++) {
-    //         digitalWrite(var.withDelay[i].pins[j], var.withDelay[i].turn);
-    //       }
-    //       if (i != 0) var.withDelay.erase(var.withDelay.begin() + i - 1);
-    //       else var.withDelay.erase(var.withDelay.begin());
-    //       continue;
-    //     }
-    // }
-    // Serial.println();
+  if (!Cnt){
+    Start = millis();
+    Cnt = true;
   }
-  // websocket.ws.cleanupClients();
+
+  if ((millis() - Start) >= 30000)
+  {
+    Start = 0;
+    Cnt = false;
+    for (int i = 0; i < varPins.actionList.size(); i++)
+    {
+      // prt(i);
+      if (varPins.actionList[i].time.hours <= TimeS.Hour() && varPins.actionList[i].time.minute <= TimeS.Minute() && varPins.actionList[i].time.day <= TimeS.Day() && varPins.actionList[i].time.month <= TimeS.Month() && varPins.actionList[i].time.year <= TimeS.Year())
+      {
+        for (int j = 0; j < varPins.pins.size(); j++){
+          if (varPins.pins[j].idPin == varPins.actionList[i].idPin){
+            if (varPins.pins[j].nrPin == varPins.actionList[i].nrPin){
+              digitalWrite(varPins.actionList[i].nrPin, varPins.actionList[i].action);
+            }
+          }
+        }
+        varPins.actionList.erase(varPins.actionList.begin() + i);
+        change = true;
+      }
+    }
+    for(int i = 0; i < varPins.actionWeek.size(); i++){
+      for (int j=0; j < varPins.actionWeek[i].arrayWeek.size(); j++){
+        if(varPins.actionWeek[i].weekCount != 0 && TimeS.nrWeekDay() == 7){
+            s_date actDate = ownTime::addDates({varPins.actionWeek[i].arrayWeek[j], 0, 0, 0, 0});
+
+            varPins.actionList.push_back({
+              actDate,
+              varPins.actionWeek[i].action,
+              varPins.actionWeek[i].idPin,
+              varPins.actionWeek[i].nrPin
+            });
+            varPins.actionWeek[i].weekCount++;
+            change = true;
+        }else if(varPins.actionWeek[i].weekCount == 0){
+          if (varPins.actionWeek[i].arrayWeek[j] <= TimeS.nrWeekDay())
+            continue;
+          int dodDay = TimeS.nrWeekDay() + varPins.actionWeek[i].arrayWeek[j];
+          s_date actDate = ownTime::addDates({dodDay, 0, 0, 0, 0});
+
+          varPins.actionList.push_back({
+            actDate,
+            varPins.actionWeek[i].action,
+            varPins.actionWeek[i].idPin,
+            varPins.actionWeek[i].nrPin
+          });
+          varPins.actionWeek[i].weekCount++;
+          change = true;
+        }
+      }
+    }
+
+    if(change){
+      StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+      jsonRet["what"] = "action-done";
+      jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
+      webserver.notifyClients(jsonRet);
+      change = false;
+    }
+  }
 }

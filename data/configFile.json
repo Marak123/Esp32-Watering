@@ -1,0 +1,49 @@
+{
+    "WIFI": {
+        "SSID": "SAGEM_1A85",
+        "PASSWORD": "63D34E7A",
+        "LOCAL_IP": [192, 168, 1, 9],
+        "GETEWAY": [192, 168, 1, 1],
+        "SUBNET": [255, 255, 255, 0]
+    },
+    "PINS": {
+        "POWER_PINS": [
+            [12, "Pin 12", false],
+            [13, "Pin 13", false],
+            [14, "Pin 14", false],
+            [15, "Pin 15", false],
+            [16, "Pin 16", false],
+            [17, "Pin 17", false],
+            [18, "Pin 18", false],
+            [19, "Pin 19", false],
+            [20, "Pin 20", false],
+            [21, "Pin 21", false],
+            [22, "Pin 22", false],
+            [23, "Pin 23", false],
+            [25, "Pin 25", false],
+            [26, "Pin 26", false],
+            [27, "Pin 27", false]
+        ],
+        "TEMP_PINS": [
+            [34, "Pin 34"],
+            [35, "Pin 35"]
+        ],
+        "AIR_PINS": [
+            [32, "Pin 32", 34],
+            [33, "Pin 33", 35]
+        ],
+        "HEAT_PINS": [
+            [26, "Pin 26", 34],
+            [27, "Pin 27", 35]
+        ],
+        "TEMP_DATA": [
+            [34, 22.5],
+            [35, 24.8]
+        ]
+    },
+    "FTP_SERVER": {
+        "IP_ADDRESS": "192.168.1.12",
+        "USERNAME": "esp32",
+        "PASSWORD": "haslo"
+    }
+}
