@@ -29,7 +29,7 @@ public:
   {
     char data[500];
     size_t len = serializeJson(json, data);
-    Serial.println("Wysyłam info");
+    // Serial.println("Wysyłam info");
     ws.textAll(data, len);
   }
 
@@ -82,20 +82,12 @@ public:
   {
     if (request->hasHeader("Cookie"))
     {
-      struct s_date todayDate = {
-          TimeS.Day(),
-          TimeS.Month(),
-          TimeS.Year()
-      };
-
       String cookie = request->header("Cookie");
-      // Serial.println(cookie);
-      for(int i=0; i < Accounts.size(); i++){
+      for(int i=0; i < Accounts.size(); i++)
         for(int j=0; j < Accounts[i].session.size(); j++){
           String cook = "ESPSESSIONID=" + String(Accounts[i].session[j].token);
-          if (cookie.indexOf(cook) != -1) if (ownTime::compareDate(Accounts[i].session[j].expDate, todayDate))  return true;
+          if (cookie.indexOf(cook) != -1) if (ownTime::compareDate(Accounts[i].session[j].expDate))  return true;
         }
-      }
     }
     return false;
   }
@@ -105,23 +97,35 @@ public:
   {
     //Glowna Strona
     server.on("/", [this](AsyncWebServerRequest *request) {
+      if (request->hasArg("logout"))
+      {
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/login/index.html");
+        response->addHeader("Set-Cookie", "ESPSESSIONID=0");
+        response->addHeader("Location", "/");
+        request->send(response);
+
+        String cookies = request->header("Cookie");
+        std::size_t pos_esp = cookies.indexOf("ESPSESSIONID=");
+        cookies = cookies.substring(pos_esp);
+        pos_esp = cookies.indexOf(";");
+        cookies = cookies.substring(0, pos_esp);
+        String espToken = cookies.substring(13);
+
+        for(int i=0; i < Accounts.size(); i++)
+          for(int j=0; j < Accounts[i].session.size(); j++)
+            if(Accounts[i].session[j].token == espToken)
+              Accounts[i].session.erase(Accounts[i].session.begin() + j);
+
+        return;
+      }
+
       if(is_authentified(request)){
         request->send(SPIFFS, "/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
         return;
       }
 
-      if (request->hasArg("LOGOUT"))
-      {
-        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/login/index.html");
-        response->addHeader("Set-Cookie", "ESPSESSIONID=0");
-        request->send(response);
-        return;
-      }
-
       if (request->hasArg("username") && request->hasArg("password"))
-      {
         for (int i = 0; i < Accounts.size(); i++)
-        {
           if (request->arg("username") == String(Accounts[i].username) && request->arg("password") == String(Accounts[i].password))
           {
             AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
@@ -133,8 +137,6 @@ public:
             request->send(response);
             return;
           }
-        }
-      }
       request->send(SPIFFS, "/login/index.html");
     });
 
@@ -157,179 +159,327 @@ public:
     server.on(
         "/power", HTTP_POST, [this](AsyncWebServerRequest *request)
         {
-            if (request->hasParam("token", true) && request->hasParam("what", true) && request->hasParam("pinID", true) && request->hasParam("action", true)){
-              if (request->arg("what") == "power-now")
-              {
-                struct s_date todayData = {
-                    TimeS.Day(),
-                    TimeS.Month(),
-                    TimeS.Year(),
-                    TimeS.Hour(),
-                    TimeS.Minute()
-                };
-                StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonArg;
-                for(int i=0; i < request->params(); i++){
-                  jsonArg[request->argName(i)] = request->arg(i);
-                }
-                for (int i = 0; i < Accounts.size(); i++){
-                  for(int j=0; j < Accounts[i].session.size();j++){
-                    if(String(Accounts[i].session[j].token) == jsonArg["token"]){
-                      if (ownTime::compareDate(Accounts[i].session[j].expDate, todayData))
-                      {
-                        String pin = jsonArg["pinID"];
-                        bool act = false;
-                        if (jsonArg["action"] == "true") act = true;
-                        digitalWrite(pin.toInt(), act);
-                        pins::changePower(pin.toInt(), act);
+          if(!authenticationAccount(request, {"token", "what", "pinID", "action"}, {"power-now"})){
+            request->send(401, "FAILED");
+            return;
+          }
 
-                        StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
-                        jsonRet["pinID"] = jsonArg["pinID"];
-                        jsonRet["action"] = jsonArg["action"];
-                        jsonRet["what"] = jsonArg["what"];
-                        notifyClients(jsonRet);
-                        request->send(200, "SUCCESS");
-                      }
-                    }
-                  }
-                }
-              }
-            }
-              request->send(401, "FAILED");
+          String pin = request->arg("pinID");
+          bool act = false;
+          if (request->arg("action") == "true") act = true;
+          digitalWrite(pin.toInt(), act);
+          pins::changePower(pin.toInt(), act);
+
+          StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+          jsonRet["pinID"] = request->arg("pinID");
+          jsonRet["action"] = request->arg("action");
+          jsonRet["what"] = request->arg("what");
+          notifyClients(jsonRet);
+          request->send(200, "SUCCESS");
         });
 
         server.on(
         "/delay", HTTP_POST, [this](AsyncWebServerRequest *request)
         {
-            if (request->hasParam("token", true) && request->hasParam("what", true) && request->hasParam("pinID", true) && request->hasParam("action", true) && request->hasParam("delay", true))
-            {
-              if (request->arg("what") == "delay")
-              {
-                struct s_date todayData = {
-                    TimeS.Day(),
-                    TimeS.Month(),
-                    TimeS.Year(),
-                    TimeS.Hour(),
-                    TimeS.Minute()
-                };
-                StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonArg;
-                for(int i=0; i < request->params(); i++){
-                    jsonArg[request->argName(i)] = request->arg(i);
-                }
-                for (int i = 0; i < Accounts.size(); i++){
-                  for(int j=0; j < Accounts[i].session.size();j++){
-                    if(String(Accounts[i].session[j].token) == jsonArg["token"]){
-                      if(ownTime::compareDate(Accounts[i].session[j].expDate, todayData)){
-                        bool act = false;
-                        if(jsonArg["action"] == "true") act = true;
-                        std::vector<int> arrayPin = convArray(jsonArg["pinID"]);
-
-                        int idPin = -1;
-                        for(int k=0; k < arrayPin.size(); k++){
-                          idPin = -1;
-                          for(int l=0; l < varPins.pins.size(); l++) if(varPins.pins[l].nrPin == arrayPin[k]) idPin = varPins.pins[l].idPin;
-                          if(idPin == -1) continue;
-
-                          varPins.actionList.push_back({
-                            ownTime::addHours(jsonArg["delay"]),
-                            act,
-                            idPin,
-                            arrayPin[k]
-                          });
-                        }
-                        StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
-                        jsonRet["what"] = jsonArg["what"];
-                        jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
-
-                        notifyClients(jsonRet);
-                        request->send(200, "SUCCESS");
-                      }
-                    }
-                  }
-                }
-              }
-            }
+          if(!authenticationAccount(request, {"token", "what", "pinID", "action", "delay"}, {"delay"})){
             request->send(401, "FAILED");
+            return;
+          }
+
+          bool act = false;
+          if(request->arg("action") == "true") act = true;
+          std::vector<int> arrayPin = convArray(request->arg("pinID"));
+
+          int idPin = -1;
+          for(int k=0; k < arrayPin.size(); k++){
+            idPin = -1;
+            for(int l=0; l < varPins.pins.size(); l++) if(varPins.pins[l].nrPin == arrayPin[k]) idPin = varPins.pins[l].idPin;
+            if(idPin == -1) continue;
+
+            varPins.actionList.push_back({
+              ownTime::addHours(request->arg("delay")),
+              act,
+              idPin,
+              arrayPin[k]
+            });
+          }
+          StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+          jsonRet["what"] = request->arg("what");
+          jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
+
+          notifyClients(jsonRet);
+          request->send(200, "SUCCESS");
         });
 
         server.on(
         "/plan", HTTP_POST, [this](AsyncWebServerRequest *request)
         {
-            int args = request->args();
-            for (int i = 0; i < args; i++)
-            {
-              Serial.printf("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
-            }
-            if (request->hasParam("token", true) && request->hasParam("what", true) && request->hasParam("pinID", true) && request->hasParam("action", true) && request->hasParam("hours", true) && (request->hasParam("dayWeek", true) || request->hasParam("date", true)))
-            {
-              if (request->arg("what") == "planDate" || request->arg("what") == "planWeek")
-              {
-            Serial.println("Dzialaaa");
-                struct s_date todayData = {
-                    TimeS.Day(),
-                    TimeS.Month(),
-                    TimeS.Year(),
-                    TimeS.Hour(),
-                    TimeS.Minute()
-                };
-                StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonArg;
-                for(int i=0; i < request->params(); i++){
-                    jsonArg[request->argName(i)] = request->arg(i);
-                }
-                for (int i = 0; i < Accounts.size(); i++){
-                  for(int j=0; j < Accounts[i].session.size();j++){
-                    if(String(Accounts[i].session[j].token) == jsonArg["token"]){
-                      if(ownTime::compareDate(Accounts[i].session[j].expDate, todayData)){
-                        s_date dateCv;
-                        std::vector<int> arrayWeek;
-                        if(jsonArg["what"] == "planDate") dateCv = ownTime::convertDate(jsonArg["date"]);
-                        if(jsonArg["what"] == "planWeek") arrayWeek = convArray(jsonArg["dayWeek"]);
-                        s_hour hourCv = ownTime::convertHours(jsonArg["hours"]);
-                        std::vector<int> arrayPin = convArray(jsonArg["pinID"]);
-                        bool act = false;
-                        if(jsonArg["action"] == "true") act = true;
 
-                        int idPin = -1;
-                        for (int k = 0; k < arrayPin.size(); k++)
-                        {
-                          idPin = -1;
-                          for (int l = 0; l < varPins.pins.size(); l++)
-                            if (varPins.pins[l].nrPin == arrayPin[k]) idPin = varPins.pins[l].idPin;
-                          if (idPin == -1) continue;
-
-                          if (jsonArg["what"] == "planDate")
-                            varPins.actionList.push_back({
-                              {dateCv.day, dateCv.month, dateCv.year, hourCv.hour, hourCv.minute},
-                              act,
-                              idPin,
-                              arrayPin[k]
-                            });
-                          if (jsonArg["what"] == "planWeek")
-                            varPins.actionWeek.push_back({
-                              arrayWeek,
-                              act,
-                              idPin,
-                              arrayPin[k],
-                              0
-                            });
-                        }
-                        StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
-                        jsonRet["what"] = jsonArg["what"];
-                        jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
-
-                        notifyClients(jsonRet);
-                        request->send(200, "SUCCESS");
-                      }
-                    }
-                  }
-                }
-              }
-            }
+          if(!authenticationAccount(request, {"token", "what", "pinID", "action", "hours", "dayWeek", "date"}, {"planDate", "planWeek"})){
             request->send(401, "FAILED");
+            return;
+          }
+
+          s_date dateCv = {0, 0, 0, 0, 0};
+          std::vector<int> arrayWeek;
+          if(request->arg("what") == "planDate") dateCv = ownTime::convertDate(request->arg("date"));
+          if(request->arg("what") == "planWeek") arrayWeek = convArray(request->arg("dayWeek"));
+          s_hour hourCv = ownTime::convertHours(request->arg("hours"));
+          std::vector<int> arrayPin = convArray(request->arg("pinID"));
+          bool act = false;
+          if(request->arg("action") == "true") act = true;
+
+          int idPin = -1;
+          for (int k = 0; k < arrayPin.size(); k++)
+          {
+            idPin = -1;
+            for (int l = 0; l < varPins.pins.size(); l++)
+              if (varPins.pins[l].nrPin == arrayPin[k]) idPin = varPins.pins[l].idPin;
+            if (idPin == -1) continue;
+
+            if (request->arg("what") == "planDate"){
+              varPins.actionList.push_back({
+                {dateCv.day, dateCv.month, dateCv.year, hourCv.hour, hourCv.minute},
+                act,
+                idPin,
+                arrayPin[k]
+              });
+            }
+            if (request->arg("what") == "planWeek"){
+              varPins.actionWeek.push_back({
+                arrayWeek,
+                hourCv,
+                act,
+                idPin,
+                arrayPin[k],
+                0
+              });
+            }
+          }
+          StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+          jsonRet["what"] = request->arg("what");
+          jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
+
+          notifyClients(jsonRet);
+          request->send(200, "SUCCESS");
         });
 
-    server.onNotFound([](AsyncWebServerRequest *request) { request->send(SPIFFS, "/notFound/index.html", "text/html"); });
+        server.on(
+            "/setTemperature", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "pinID", "temperature"}, {"setTemperature"})){
+                request->send(401, "FAILED");
+                return;
+              }
 
-    server.begin();
+              int idPin = -1;
+              for(int l=0; l < varPins.pins.size(); l++)
+                if(varPins.pins[l].nrPin == request->arg("pinID").toInt())
+                {
+                  idPin = varPins.pins[l].idPin;
+                  break;
+                }
+              for(int l=0; l < varPins.tempData.size(); l++)
+                if (varPins.tempData[l].idPinTemp == idPin)
+                {
+                  varPins.tempData[l].primTemp = request->arg("temperature").toInt();
+                  break;
+                }
+              StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+              jsonRet["what"] = request->arg("what");
+              jsonRet["tempElem"] = arrCreator::temperatureEle(true);
+
+              notifyClients(jsonRet);
+              request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/timetableRemove", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "indexElm", "action", "pinID", "data", "hours"}, {"timetable"})){
+                request->send(401, "FAILED");
+                return;
+              }
+
+              int point = 0;
+              for(int i=0; i < varPins.actionList.size(); i++){
+                point = 0;
+                if(request->arg("pinID").toInt() == varPins.actionList[i].nrPin){
+                  s_date data = ownTime::convertDate(request->arg("data"));
+                  s_hour hour = ownTime::convertHours(request->arg("hours"));
+                  data.hours = hour.hour;
+                  data.minute = hour.minute;
+
+                  if(ownTime::compareDate(data, varPins.actionList[i].time)) point++;
+                  if(varPins.actionList[i].action == request->arg("action").toInt()) point++;
+                }
+                if(point == 2){
+                  varPins.actionList.erase(varPins.actionList.begin());
+                  break;
+                }
+              }
+
+              StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+              jsonRet["what"] = request->arg("what");
+              jsonRet["actionEle"] = arrCreator::listActionElm(true);
+
+              notifyClients(jsonRet);
+              request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/changeUsername", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "newUsername", "password"}, {"changeUsername"})){
+                request->send(401, "FAILED");
+                return;
+              }
+
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(Accounts[i].password == request->arg("password"))
+                      Accounts[i].username = request->arg("newUsername");
+                    else error++;
+                  }
+
+              if(error != 0){
+                request->send(401, "FAILED");
+                return;
+              }
+
+              request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/changePassword", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "newPassword", "oldPassword"}, {"changePassword"})){
+                request->send(401, "FAILED");
+                return;
+              }
+
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(Accounts[i].password == request->arg("oldPassword"))
+                      Accounts[i].password = request->arg("newPassword");
+                    else error++;
+                  }
+
+              if(error != 0){
+                request->send(401, "FAILED");
+                return;
+              }
+
+              request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/validitySession", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "exp_day"}, {"validitySession"})){
+                request->send(401, "Blad pobierania danych, Brak dostepu.");
+                return;
+              }
+
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token"))
+                    Accounts[i].dayExp_mainSession = request->arg("exp_day").toInt();
+                  else error++;
+
+              if(error != 0){
+                request->send(405, "Blad pobierania danych, Sesja wygasla.");
+                return;
+              }
+              request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/getMobileToken", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what"}, {"getMobileToken"})){
+                request->send(401, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
+                return;
+              }
+
+              int error = 0;
+              String mbtoken = "";
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(ownTime::compareDate(Accounts[i].mobileToken.expDate))
+                      mbtoken = Accounts[i].mobileToken.token;
+                    else error++;
+                  }
+
+              if(error != 0){
+                request->send(405, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Sesja wygasla.\"}");
+                return;
+              }
+
+              String result = "{\"act\": \"SUCCESS\", \"result\": \"" + mbtoken + "\"}";
+              request->send(200, "plain/text", result);
+            });
+
+        server.on(
+            "/generateNewMobileToken", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what"}, {"generateNewMobileToken"})){
+                request->send(401, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
+                return;
+              }
+
+              int error = 0;
+              String mbtoken = "";
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(ownTime::compareDate(Accounts[i].mobileToken.expDate)){
+                      Accounts[i].mobileToken = generateWebToken(Accounts[i].dayExp_mobileSession);
+                      mbtoken = Accounts[i].mobileToken.token;
+                    }else error++;
+                  }
+
+              if(error != 0){
+                request->send(405, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Sesja wygasla.\"}");
+                return;
+              }
+
+              String result = "{\"act\": \"SUCCESS\", \"result\": \"" + mbtoken + "\"}";
+              request->send(200, "plain/text", result);
+            });
+
+        server.on(
+            "/mobileValiditySession", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "exp_day"}, {"mobileValiditySession"})){
+                request->send(401, "Blad pobierania danych, Brak dostepu.");
+                return;
+              }
+
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token"))
+                    Accounts[i].dayExp_mobileSession = request->arg("exp_day").toInt();
+                  else error++;
+
+              if(error != 0){
+                request->send(405, "Blad pobierania danych, Sesja wygasla.");
+                return;
+              }
+              request->send(200, "SUCCESS");
+            });
+
+        server.onNotFound([](AsyncWebServerRequest *request)
+                          { request->send(SPIFFS, "/notFound/index.html", "text/html"); });
+
+        server.begin();
   }
 };
 

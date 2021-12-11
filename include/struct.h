@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <DHT.h>
 
 struct s_date
 {
@@ -30,7 +31,10 @@ struct s_AccountSchema
     String username;
     String password;
     struct s_date dateCreate;
+    struct s_session mobileToken;
     std::vector<struct s_session> session;
+    int dayExp_mainSession;
+    int dayExp_mobileSession;
 };
 
 struct s_pin
@@ -62,12 +66,14 @@ struct s_tempPin
 struct s_tempData
 {
     int idTemp;
+    int idPinTemp;
     int idPinHeat;
     bool powerHeat;
     int idPinAir;
     bool powerAir;
     float curlTemp;
     float primTemp;
+    DHT handleRead;
 };
 
 struct s_actionList
@@ -79,7 +85,8 @@ struct s_actionList
 };
 
 struct s_actionWeek{
-    std::vector<int> arrayWeek; 
+    std::vector<int> arrayWeek;
+    struct s_hour time;
     bool action;
     int idPin;
     int nrPin;

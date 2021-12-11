@@ -4,6 +4,7 @@
 #include <SPIFFS.h>
 #include <time.h>
 #include <Arduino.h>
+#include <ESP32_FTPClient.h>
 
 #include "ownTime.h"
 #include "variables.h"
@@ -38,11 +39,14 @@ namespace arrCreator{
     arrJS += String("];");
     return arrJS;
   }
-  String temperatureEle(){
-    String arrJS = String("var temperatureEle = [");
+  String temperatureEle(bool sameArray=false){
+    String arrJS = "";
+    if(!sameArray) arrJS += String("var temperatureEle = [");
+    else arrJS += "[";
     for (int i = 0; i < varPins.tempData.size(); i++) arrJS += String("[") + varPins.tempData[i].idTemp + ", \"" + varPins.tempData[i].primTemp + "\", " + varPins.tempData[i].powerAir + ", " + varPins.tempData[i].powerHeat + ", \"" + varPins.tempData[i].curlTemp + "\"],";
     arrJS = arrJS.substring(0, arrJS.length() - 1);
-    arrJS += String("];");
+    if(!sameArray) arrJS += String("];");
+    else arrJS += String("]");
     return arrJS;
   }
   String listActionElm(bool sameArray=false){
@@ -58,9 +62,25 @@ namespace arrCreator{
     return arrJS;
   }
 
+  String weekActionList(bool sameArray=false){
+    String arrJS = "";
+    if(!sameArray) arrJS = String("var weekActionList = [");
+    else arrJS = String("[");
+    if(varPins.actionWeek.size() != 0){
+     for(int i=0; i < varPins.actionWeek.size(); i++){
+       arrJS += String("[[");
+       for(int wd=0; wd < varPins.actionWeek[i].arrayWeek.size(); wd++) arrJS += String(varPins.actionWeek[i].arrayWeek[wd]) + ", ";
+       arrJS += String("], [") + String(varPins.actionWeek[i].time.hour) + ", " + String(varPins.actionWeek[i].time.minute) + "], " + String(varPins.actionWeek[i].action) + ", " + String(varPins.actionWeek[i].nrPin) + "],";
+     }
+    }
+    if(!sameArray) arrJS += String("];");
+    else arrJS += String("]");
+    return arrJS;
+  }
+
 
   String allArray(){
-    return allPins() + "\n" + elementsPins() + "\n" + tmpEm() + "\n" + temperatureEle() + "\n" + listActionElm();
+    return allPins() + "\n" + elementsPins() + "\n" + tmpEm() + "\n" + temperatureEle() + "\n" + listActionElm() + "\n" + weekActionList();
   }
 }
 
@@ -73,8 +93,6 @@ std::vector<int> convArray(String par)
     if (isDigit(par[i])) har += par[i];
     if (par[i] == ',' || i == par.length() - 1){
       arr.push_back(har.toInt());
-      Serial.print(har);
-      Serial.print(" - ");
       har = "";
       if (i == par.length() - 1) break;
     }
@@ -190,7 +208,7 @@ public:
 };
 
 //Generowanie tokenu użytkownika
-struct s_session generateWebToken()
+struct s_session generateWebToken(int exp_day=30)
 {
   srand(time(NULL));
   String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&?LPOIUYTREWQASDFGHJKMNBVCXZ";
@@ -205,17 +223,10 @@ struct s_session generateWebToken()
     token += wordToken[randomNumber];
   }
 
-  struct s_session tkNew;
-  struct s_date dt;
-
-  dt.day = TimeS.Day();
-  dt.month = TimeS.Month();
-  dt.year = TimeS.Year();
-  dt.hours = TimeS.Hour();
-  dt.minute = TimeS.Minute();
-
-  tkNew.token = token;
-  tkNew.expDate = dt;
+  struct s_session tkNew{
+    ownTime::addDates({exp_day}),
+    token
+  };
 
   return tkNew;
 }
@@ -223,16 +234,39 @@ struct s_session generateWebToken()
 //Tworzenie konta użytkownika
 struct s_AccountSchema createAccount(String username, String password)
 {
-  struct s_date createDate;
-  createDate.day = TimeS.Day();
-  createDate.month = TimeS.Month();
-  createDate.year = TimeS.Year();
-
   struct s_AccountSchema defaultAccount;
   defaultAccount.username = username;
   defaultAccount.password = password;
-  defaultAccount.dateCreate = createDate;
+  defaultAccount.dateCreate = {
+    TimeS.Day(),
+    TimeS.Month(),
+    TimeS.Year(),
+    TimeS.Hour(),
+    TimeS.Minute()
+  };
+  defaultAccount.mobileToken = generateWebToken(365);
+  defaultAccount.session.push_back(generateWebToken(30));
+  defaultAccount.dayExp_mainSession = 30;
+  defaultAccount.dayExp_mobileSession = 365;
+
+
   return defaultAccount;
+}
+
+bool authenticationAccount(AsyncWebServerRequest *request, std::vector<String> arg, std::vector<String> argWhat){
+  for(int a=0; a < arg.size(); a++)
+    if (request->hasParam(arg[a], true))
+      for(int h=0; h < argWhat.size(); h++)
+        if (request->arg("what") == argWhat[h])
+        {
+          StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonArg;
+          for (int i = 0; i < request->params(); i++) jsonArg[request->argName(i)] = request->arg(i);
+          for (int i = 0; i < Accounts.size(); i++)
+            for (int j = 0; j < Accounts[i].session.size(); j++)
+              if (String(Accounts[i].session[j].token) == jsonArg["token"])
+                if (ownTime::compareDate(Accounts[i].session[j].expDate)) return true;
+        }
+  return false;
 }
 
 namespace pins
@@ -241,23 +275,20 @@ namespace pins
   {
     int idPin = -1;
     for (int i = 0; i < varPins.pins.size(); i++)
-    {
       if (varPins.pins[i].nrPin == pinNR)
       {
         idPin = varPins.pins[i].idPin;
         break;
       }
-    }
     for (int i = 0; i < varPins.powerPins.size(); i++)
-    {
       if (varPins.powerPins[i].idPin == idPin)
       {
         varPins.powerPins[i].power = power;
         return true;
       }
-    }
     return false;
   }
 }
+
 
 #endif

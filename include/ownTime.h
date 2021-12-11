@@ -10,8 +10,8 @@ namespace ownTime
     class ownTime
     {
     public:
-        struct tm timeinfo;
-        ownTime(const char *ntpServer = "pool.ntp.org", const long gmtOffset_sec = 3600, const int daylightOffset_sec = 3600)
+        struct tm timeinfo = {0};
+        ownTime(const char *ntpServer = "pool.ntp.org", const long gmtOffset_sec = 3600, const int daylightOffset_sec = 0)
         {
             configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
         }
@@ -94,20 +94,40 @@ namespace ownTime
         }
     };
 
+  ownTime TimeS;
+
   const int Month_30[4] = {4, 6, 9, 11};
   const int Month_31[7] = {1, 3, 5, 7, 8, 10, 12};
   const String Month_Word[12] = {"Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"};
 
   //Sprawdzanie ilosci dni w miesiacu
   int dayINmonth(s_date date){
+    if(date.month == 2){
+      //Sprawdzanie przestepnosci
+      if(date.year % 4 == 0)
+        if(date.year % 100 == 0)
+          if(date.year % 400 == 0) return 29;
+          else return 28;
+        else return 29;
+      else return 28;
+    };
     for (int i = 0; i < sizeof(Month_30) / sizeof(Month_30[0]); i++)
       if (date.month == Month_30[i]) return 30;
     for (int i = 0; i < sizeof(Month_31) / sizeof(Month_31[0]); i++)
       if (date.month == Month_31[i]) return 31;
     return -1;
   }
-  int dayINmonth(int month)
+  int dayINmonth(int month, int year)
   {
+    if(month == 2){
+      //Sprawdzanie przestepnosci
+      if(year % 4 == 0)
+        if(year % 100 == 0)
+          if(year % 400 == 0) return 29;
+          else return 28;
+        else return 29;
+      else return 28;
+    };
     for (int i = 0; i < sizeof(Month_30) / sizeof(Month_30[0]); i++)
       if (month == Month_30[i]) return 30;
     for (int i = 0; i < sizeof(Month_31) / sizeof(Month_31[0]); i++)
@@ -118,21 +138,17 @@ namespace ownTime
   //Sprawdzanie czy dany dzien jest ostatnim dniem w miesiacu
   bool lastDay_inMonth(s_date date)
   {
-    int kt = dayINmonth(date.month);
+    int kt = dayINmonth(date);
     if (!kt) if (date.day == 30) return true;
     if (kt) if (date.day == 31) return true;
     return false;
   }
 
-  bool lastDay_inMonth(int day, int month)
+  bool lastDay_inMonth(int day, int month, int year)
   {
-    int kt = dayINmonth(month);
-    if (!kt)
-      if (day == 30)
-        return true;
-    if (kt)
-      if (day == 31)
-        return true;
+    int kt = dayINmonth(month, year);
+    if (!kt) if (day == 30) return true;
+    if (kt) if (day == 31) return true;
     return false;
   }
 
@@ -140,7 +156,7 @@ namespace ownTime
   bool validDate(s_date date)
   {
     if (date.month > 12) return false;
-    if (date.day > dayINmonth(date.month)) return false;
+    if (date.day > dayINmonth(date)) return false;
     if(date.hours > 23) return false;
     if(date.minute > 59) return false;
     return true;
@@ -149,9 +165,30 @@ namespace ownTime
   //Porownywanie daty ze struktury DATE
   bool compareDate(s_date tokenData, s_date today)
   {
-    if ((tokenData.day > today.day && tokenData.month > today.month) || tokenData.year > today.year)
+     if ((tokenData.day < today.day && tokenData.month < today.month) || tokenData.year < today.year)
       return false;
     return true;
+  };
+
+  //Porownywanie daty ze struktury DATE
+  bool compareDate(s_date tokenData)
+  {
+    struct s_date today = {
+        TimeS.Day(),
+        TimeS.Month(),
+        TimeS.Year(),
+        TimeS.Hour(),
+        TimeS.Minute()
+    };
+    if(tokenData.year == today.year)
+      if(tokenData.month > today.month) return true;
+      else if(tokenData.month == today.month)
+        if(tokenData.day > today.day) return true;
+        else return false;
+      else return false;
+    else if(tokenData.year < today.year) return false;
+    else if(tokenData.year > today.year) return true;
+    return false;
   };
 
   s_hour convertHours(String hours){
@@ -214,28 +251,27 @@ namespace ownTime
   //Dodawanie jednej daty do drugiej
   s_date addDates(s_date primaryDate, s_date addDate)
   {
-    int day = primaryDate.day;
-    int month = primaryDate.month;
-    int year = primaryDate.year;
+    int day = primaryDate.day + addDate.day;
+    int month = primaryDate.month + addDate.month;
+    int year = primaryDate.year + addDate.year;
     int hours = primaryDate.hours + addDate.hours;
     int minute = primaryDate.minute + addDate.minute;
 
-    if(minute > 59){
+    while(minute > 59){
       minute -= 59;
       hours += 1;
     }
-    if(hours > 23){
+    while(hours > 23){
       hours -= 23;
       day += 1;
     }
-    if (day > dayINmonth(month))
-    {
-      day -= dayINmonth(month);
-      month += 1;
-    }
-    if(month > 12){
-      month = 1;
-      year += 1;
+    while(day > dayINmonth(month, year)){
+        day -= dayINmonth(month, year);
+        month += 1;
+        if(month > 12){
+          month = 1;
+          year += 1;
+        }
     }
 
     return s_date{
@@ -246,35 +282,31 @@ namespace ownTime
       minute
     };
   }
-  s_date addDates(s_date addDate)
-  {
-    ownTime tm;
-    tm.getTime();
 
-    int day = tm.Day();
-    int month = tm.Month();
-    int year = tm.Year();
-    int hours = tm.Hour();
-    int minute = tm.Minute();
+  //Dodawanie jednej daty do drugiej
+  s_date addDates(s_date addDate){
+    int day = TimeS.Day() + addDate.day;
+    int month = TimeS.Month() + addDate.month;
+    int year = TimeS.Year() + addDate.year;
+    int hours = TimeS.Hour() + addDate.hours;
+    int minute = TimeS.Minute() + addDate.minute;
 
-    if(minute > 59){
+    while(minute > 59){
       minute -= 59;
       hours += 1;
     }
-    if(hours > 23){
+    while(hours > 23){
       hours -= 23;
       day += 1;
     }
-    if (day > dayINmonth(month))
-    {
-      day -= dayINmonth(month);
+    while(day > dayINmonth(month, year)){
+      day -= dayINmonth(month, year);
       month += 1;
+      if(month > 12){
+        month = 1;
+        year += 1;
+      }
     }
-    if(month > 12){
-      month = 1;
-      year += 1;
-    }
-
     return s_date{
       day,
       month,
@@ -283,6 +315,7 @@ namespace ownTime
       minute
     };
   }
+
   s_date addHours(String date)
   {
     ownTime tm;
@@ -304,9 +337,9 @@ namespace ownTime
       hours -= 24;
       day += 1;
     }
-    if (day > dayINmonth(month))
+    if (day > dayINmonth(month, year))
     {
-      day -= dayINmonth(month);
+      day -= dayINmonth(month, year);
       month += 1;
     }
     if(month > 12){

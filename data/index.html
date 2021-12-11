@@ -94,7 +94,7 @@
             </div>
             <div class="switchPower">
                 <span class="switch-ct">
-                    <label class="switch">
+                    <label class="switch switch-static">
                         <input type="checkbox" class="checkbox" name="delay_off_on" value="delay_off_on">
                         <div class="slider">
                             <svg viewBox="144.142 128.056 268.269 169.133" width="80%">
@@ -147,7 +147,7 @@
             <hr>
             <div class="switchPower">
                 <span class="switch-ct">
-                    <label class="switch">
+                    <label class="switch switch-static">
                         <input type="checkbox" class="checkbox" name="delay_off_on" value="delay_off_on">
                         <div class="slider">
                             <svg viewBox="144.142 128.056 268.269 169.133" width="80%">
@@ -216,7 +216,7 @@
         </div>
         <div class="timetable  col-11 justify-content-start">
             <div class="main">
-                <div class="list select">
+                <div class="actionList list select">
                     <div class="legend">
                         <div>
                             <p>Data</p>
@@ -229,6 +229,23 @@
                         </div>
                         <div>
                             <p>Nazwa(pin)</p>
+                        </div>
+                    </div>
+                    <div class="elemList"></div>
+                </div>
+                <div class="weekList list select">
+                    <div class="legend">
+                        <div>
+                            <p>Dni w tygodniu</p>
+                        </div>
+                        <div>
+                            <p>Godzina</p>
+                        </div>
+                        <div>
+                            <p>Akcja</p>
+                        </div>
+                        <div>
+                            <p>Lista pinów(Nazwa(pin))</p>
                         </div>
                     </div>
                     <div class="elemList"></div>
@@ -254,11 +271,12 @@
         document.getElementById("loadingPage").style.display = "none";
     }
 %ARRAYS_WITH_DATA%
+    // const weekActionList = [[[2, 3, 6], [18, 29], false, [13, 15]]];
     // const allPins = [[13, "Pin 13", "power"], [14, "Pin 14", "power"], [15, "Pin 15", "power"], [16, "Pin 16", "power"], [17, "Pin 17", "power"], [18, "Pin 18", "power"], [19, "Pin 19", "power"], [20, "Pin 20", "power"], [21, "Pin 21", "temperature"], [22, "Pin 22", "air"], [23, "Pin 23", "heat"], [24, "Pin 24", "temperature"], [25, "Pin 25", "air"], [26, "Pin 26", "heat"]]; // opis tablicy [numer pinu, nazwa pinu, rodzaj pinu]
     // const elementsPins = [[0, false], [1, true], [2, false], [3, true], [4, true], [5, false], [6, false], [7, false]]; // opis tablicy [numer indeksu pinu w tablicy allPins, akcja (włączony lub wyłączony)]
     // const tmpEm = [[8, 9, 10], [11, 12, 13]]; // opis tablicy [numer indeksu pinu tenperatury w tablicy allPins, numer indeksu pinu heat, numer indekstu pinu air]
     // var temperatureEle = [[8, "21", true, false, "22.6"], [11, "23.2", true, false, "25.9"]]; // opis tablicy [numer indeksu pinu temperatury, wartość utrzymywanej temperatury, akcja heat (włączone lub wyłączone), akcja air(włączone lub wyłączone), wartość aktualnej tenperatury z czytnika]
-    // var listActionElm = [[[11, 1, 2022], [20, 49], false, 4], [[19, 4, 2021], [8, 9], true, 7], [[18, 9, 2020], [5, 24], true, 0], [[18, 9, 2020], [7, 24], false, 0], [[17, 5, 2021], [19, 29], true, 6]]; // opis tablicy [data [danien, miesiac, rok], godzina[godziny, minuty], akcja (włączyć lub wyłączyć), numer indeksu pinu w tablicy allPins]
+    // var listActionElm = [[[11, 1, 2022], [20, 49], false, 4], [[19, 4, 2021], [8, 9], true, 7], [[18, 9, 2020], [5, 24], true, 0], [[18, 9, 2020], [7, 24], false, 0], [[17, 5, 2021], [19, 29], true, 6]]; // opis tablicy [data [dzien, miesiac, rok], godzina[godziny, minuty], akcja (włączyć lub wyłączyć), numer indeksu pinu w tablicy allPins]
 </script>
 
 <script crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
