@@ -20,21 +20,21 @@ void deepSleep(String message = "", int second = 60)
 namespace arrCreator{
   String allPins(){
     String arrJS = "var allPins = [";
-    for (int i = 0; i < varPins.pins.size(); i++) arrJS += String("[") + varPins.pins[i].nrPin + ", \"" + varPins.pins[i].namePin + "\", \"" + varPins.pins[i].actionPin + "\"],";
+    for (s_pin pin : varPins.pins)  arrJS += String("[") + pin.nrPin + ", \"" + pin.namePin + "\", \"" + pin.actionPin + "\"],";
     arrJS = arrJS.substring(0, arrJS.length() - 1);
     arrJS += String("];");
     return arrJS;
   }
   String elementsPins(){
     String arrJS = String("var elementsPins = [");
-    for (int i = 0; i < varPins.powerPins.size(); i++) arrJS += String("[") + varPins.powerPins[i].idPin + ", " + varPins.powerPins[i].power + "],";
+    for (s_powerPin pin : varPins.powerPins)  arrJS += String("[") + pin.idPin + ", " + pin.power + "],";
     arrJS = arrJS.substring(0, arrJS.length() - 1);
     arrJS += String("];");
     return arrJS;
   }
   String tmpEm(){
     String arrJS = String("var tmpEm = [");
-    for (int i = 0; i < varPins.tempPins.size(); i++) arrJS += String("[") + varPins.tempPins[i].idPinTemp + ", " + varPins.tempPins[i].idPinAir + ", " + varPins.tempPins[i].idPinHeat + "],";
+    for (s_tempPin pin : varPins.tempPins) arrJS += String("[") + String(pin.idPinTemp) + ", " + String(pin.idPinAir) + ", " + String(pin.idPinHeat) + "],";
     arrJS = arrJS.substring(0, arrJS.length() - 1);
     arrJS += String("];");
     return arrJS;
@@ -43,7 +43,7 @@ namespace arrCreator{
     String arrJS = "";
     if(!sameArray) arrJS += String("var temperatureEle = [");
     else arrJS += "[";
-    for (int i = 0; i < varPins.tempData.size(); i++) arrJS += String("[") + varPins.tempData[i].idTemp + ", \"" + varPins.tempData[i].primTemp + "\", " + varPins.tempData[i].powerAir + ", " + varPins.tempData[i].powerHeat + ", \"" + varPins.tempData[i].curlTemp + "\"],";
+    for (s_tempData dt : varPins.tempData)  arrJS += String("[") + dt.idTemp + ", \"" + dt.primTemp + "\", " + dt.powerAir + ", " + dt.powerHeat + ", \"" + dt.curlTemp + "\"],";
     arrJS = arrJS.substring(0, arrJS.length() - 1);
     if(!sameArray) arrJS += String("];");
     else arrJS += String("]");
@@ -54,7 +54,7 @@ namespace arrCreator{
     if(!sameArray) arrJS = String("var listActionElm = [");
     else arrJS = String("[");
     if(varPins.actionList.size() != 0){
-      for (int i = 0; i < varPins.actionList.size(); i++) arrJS += String("[[") + varPins.actionList[i].time.day + ", " + varPins.actionList[i].time.month + ", " + varPins.actionList[i].time.year + "], [" + varPins.actionList[i].time.hours + ", " + varPins.actionList[i].time.minute + "], " + varPins.actionList[i].action + ", " + varPins.actionList[i].idPin + "],";
+      for (s_actionList acL : varPins.actionList)  arrJS += String("[[") + acL.time.day + ", " + acL.time.month + ", " + acL.time.year + "], [" + acL.time.hours + ", " + acL.time.minute + "], " + acL.action + ", " + acL.idPin + "],";
       arrJS = arrJS.substring(0, arrJS.length() - 1);
     }
     if(!sameArray) arrJS += String("];");
@@ -67,15 +67,19 @@ namespace arrCreator{
     if(!sameArray) arrJS = String("var weekActionList = [");
     else arrJS = String("[");
     if(varPins.actionWeek.size() != 0){
-     for(int i=0; i < varPins.actionWeek.size(); i++){
+     for (s_actionWeek acW : varPins.actionWeek) {
        arrJS += String("[[");
-       for(int wd=0; wd < varPins.actionWeek[i].arrayWeek.size(); wd++) arrJS += String(varPins.actionWeek[i].arrayWeek[wd]) + ", ";
-       arrJS += String("], [") + String(varPins.actionWeek[i].time.hour) + ", " + String(varPins.actionWeek[i].time.minute) + "], " + String(varPins.actionWeek[i].action) + ", " + String(varPins.actionWeek[i].nrPin) + "],";
+       for(int wd=0; wd < acW.arrayWeek.size(); wd++) arrJS += String(acW.arrayWeek[wd]) + ", ";
+       arrJS += String("], [") + String(acW.time.hour) + ", " + String(acW.time.minute) + "], " + String(acW.action) + ", " + String(acW.nrPin) + "],";
      }
     }
     if(!sameArray) arrJS += String("];");
     else arrJS += String("]");
     return arrJS;
+  }
+
+  String versionArray(){
+    return "const info_desc = [" + updateSoft.getVersion() + "];";
   }
 
 
@@ -132,15 +136,28 @@ int inArray(std::vector<std::vector<String>> array, String find)
 }
 
 ///Inicjacja WiFi
-void initWiFi(const char *ssid, const char *password)
+void initWiFi(String ssid=dataWifi.ssid, String password=dataWifi.password, String hostname="ESP32-platform-watering",IPAddress local_ip=dataWifi.local_ip, IPAddress gateway=dataWifi.gateway, IPAddress subnet=dataWifi.subnet)
 {
-  WiFi.begin(ssid, password);
+  if(WiFi.status() == WL_CONNECTED) return;
+
+  Serial.println("SSID: " + ssid + "\nPassword: " + password);
+
+  WiFi.begin((const char*)ssid.c_str(), (const char*)password.c_str());
+  if(local_ip != IPAddress(0,0,0,0) && gateway != IPAddress(0,0,0,0) && subnet != IPAddress(0,0,0,0)) WiFi.config(local_ip, gateway, subnet);
+  WiFi.hostname((const char*)hostname.c_str());
+
+  int timeout_counter = 0;
+  Serial.print("Connecting to WiFi..");
+
   while (WiFi.status() != WL_CONNECTED)
   {
+    Serial.print(".");
     delay(1000);
-    Serial.println("Connecting to WiFi..");
+    timeout_counter++;
+    if(timeout_counter >= 5) ESP.restart();
   }
-  Serial.println(WiFi.localIP());
+
+  Serial.print("Connected to the WiFi network. \nWith IP: " + WiFi.localIP().toString() + "\nGateway: " + WiFi.gatewayIP().toString() + "\nSubnet: " + WiFi.subnetMask().toString() + "\nHostname: " + String(WiFi.getHostname()) + "\n\n");
 }
 
 ///Inicjacja odczytu z plikow
@@ -159,7 +176,8 @@ class FTP
   ESP32_FTPClient ftp;
 
 public:
-  FTP(char ftp_server[], char ftp_user[], char ftp_password[]) : ftp(ftp_server, ftp_user, ftp_password, 5000, 2) {}
+  FTP(char *ftp_server, char *ftp_user, char *ftp_password, uint8_t port) : ftp(ftp_server, port, ftp_user, ftp_password, 5000, 2) {}
+  FTP(char *ftp_server, char *ftp_user, char *ftp_password) : ftp(ftp_server, ftp_user, ftp_password, 5000, 2) {}
 
   bool Connect(bool message = false)
   {
@@ -208,7 +226,7 @@ public:
 };
 
 //Generowanie tokenu użytkownika
-struct s_session generateWebToken(int exp_day=30)
+struct s_session generateWebToken(int exp_day=30, int exp_hour=0, int exp_min=0)
 {
   srand(time(NULL));
   String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&?LPOIUYTREWQASDFGHJKMNBVCXZ";
@@ -224,7 +242,7 @@ struct s_session generateWebToken(int exp_day=30)
   }
 
   struct s_session tkNew{
-    ownTime::addDates({exp_day}),
+    ownTime::addDates({exp_day, 0, 0, exp_hour, exp_min}),
     token
   };
 
@@ -232,39 +250,62 @@ struct s_session generateWebToken(int exp_day=30)
 }
 
 //Tworzenie konta użytkownika
-struct s_AccountSchema createAccount(String username, String password)
+struct s_AccountSchema createAccount(String username, String password, bool isAdmin=false)
 {
-  struct s_AccountSchema defaultAccount;
-  defaultAccount.username = username;
-  defaultAccount.password = password;
-  defaultAccount.dateCreate = {
-    TimeS.Day(),
-    TimeS.Month(),
-    TimeS.Year(),
-    TimeS.Hour(),
-    TimeS.Minute()
+  for(s_AccountSchema ac : Accounts)
+    if(ac.username == username){
+      Serial.println("Użytkownik o takiej nazwie już istnieje.");
+      return {};
+    }
+
+  struct s_AccountSchema defaultAccount{
+    username,
+    password,
+    {
+      TimeS.Day(),
+      TimeS.Month(),
+      TimeS.Year(),
+      TimeS.Hour(),
+      TimeS.Minute()
+    },
+    {},
+    {},
+    30,
+    365,
+    isAdmin,
+    {}
   };
-  defaultAccount.mobileToken = generateWebToken(365);
-  defaultAccount.session.push_back(generateWebToken(30));
-  defaultAccount.dayExp_mainSession = 30;
-  defaultAccount.dayExp_mobileSession = 365;
+  // defaultAccount.username = username;
+  // defaultAccount.password = password;
+  // defaultAccount.dateCreate = {
+  //   TimeS.Day(),
+  //   TimeS.Month(),
+  //   TimeS.Year(),
+  //   TimeS.Hour(),
+  //   TimeS.Minute()
+  // };
+  // defaultAccount.mobileToken = generateWebToken(365);
+  // defaultAccount.session.push_back(generateWebToken(30));
+  // defaultAccount.dayExp_mainSession = 30;
+  // defaultAccount.dayExp_mobileSession = 365;
 
 
   return defaultAccount;
 }
 
-bool authenticationAccount(AsyncWebServerRequest *request, std::vector<String> arg, std::vector<String> argWhat){
-  for(int a=0; a < arg.size(); a++)
-    if (request->hasParam(arg[a], true))
-      for(int h=0; h < argWhat.size(); h++)
-        if (request->arg("what") == argWhat[h])
+bool authenticationAccount(AsyncWebServerRequest *request, std::vector<String> arg, std::vector<String> argWhat, bool adminSession=false){
+  for(String a : arg)
+    if (request->hasParam(a, true))
+      for(String aw : argWhat)
+        if (request->arg("what") == aw)
         {
           StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonArg;
           for (int i = 0; i < request->params(); i++) jsonArg[request->argName(i)] = request->arg(i);
-          for (int i = 0; i < Accounts.size(); i++)
-            for (int j = 0; j < Accounts[i].session.size(); j++)
-              if (String(Accounts[i].session[j].token) == jsonArg["token"])
-                if (ownTime::compareDate(Accounts[i].session[j].expDate)) return true;
+          for (s_AccountSchema acc : Accounts)
+            if(!adminSession)
+              for (s_session s : acc.session) if (String(s.token) == jsonArg["token"]) return ownTime::compareDate(s.expDate);
+            else
+              for (s_session s : acc.adminSession) if (String(s.token) == jsonArg["token"]) return ownTime::compareDate(s.expDate);
         }
   return false;
 }
@@ -288,6 +329,13 @@ namespace pins
       }
     return false;
   }
+}
+
+char *ToChar(String str)
+{
+  char *cstr = new char[str.length() + 1];
+  strcpy(cstr, str.c_str());
+  return cstr;
 }
 
 

@@ -2,9 +2,7 @@
     "WIFI": {
         "SSID": "SAGEM_1A85",
         "PASSWORD": "63D34E7A",
-        "LOCAL_IP": [192, 168, 1, 9],
-        "GETEWAY": [192, 168, 1, 1],
-        "SUBNET": [255, 255, 255, 0]
+        "HOSTNAME": "ESP32_Nawadnianie"
     },
     "PINS": {
         "POWER_PINS": [
@@ -43,7 +41,20 @@
     },
     "FTP_SERVER": {
         "IP_ADDRESS": "192.168.1.12",
+        "PORT": 21,
         "USERNAME": "esp32",
         "PASSWORD": "haslo"
-    }
+    },
+    "ACCOUNTS": [
+        {
+            "USERNAME": "admin",
+            "PASSWORD": "admin",
+            "RIGHTS": "ADMIN"
+        },
+        {
+            "USERNAME": "user",
+            "PASSWORD": "user",
+            "RIGHTS": "USER"
+        }
+    ]
 }

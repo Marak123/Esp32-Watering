@@ -3,33 +3,6 @@
 
  bool isRune = true;
 
-void print(s_date dateAction){
-    Serial.print(dateAction.day);
-    Serial.print("-");
-    Serial.print(dateAction.month);
-    Serial.print("-");
-    Serial.println(dateAction.year);
-}
-
-void printActionList(){
-    Serial.print("Action list: Lenght=");
-    Serial.print(varPins.actionList.size());
-    for(int i=0; i < varPins.actionList.size(); i++){
-        Serial.print("     Date=");
-        Serial.print(varPins.actionList[i].time.day);
-        Serial.print("-");
-        Serial.print(varPins.actionList[i].time.month);
-        Serial.print("-");
-        Serial.print(varPins.actionList[i].time.year);
-        Serial.print("     Time=");
-        Serial.print(varPins.actionList[i].time.hours);
-        Serial.print(":");
-        Serial.print(varPins.actionList[i].time.minute);
-        Serial.print("     Pin=");
-        Serial.println(varPins.actionList[i].nrPin);
-    }
-}
-
 StaticJsonDocument<JSON_OBJECT_SIZE(20)> inLoopActionPerform()
 {
     bool change = false;

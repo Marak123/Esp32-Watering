@@ -7,7 +7,7 @@
   <title>Zaloguj</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
   <link rel="stylesheet" href="/style/styleLogin.min.css">
-  <!-- <link rel="stylesheet" href="/style/style.min.css"> -->
+  <!-- <link rel="stylesheet" href="style.min.css"> -->
 
 </head>
 
@@ -34,6 +34,9 @@
   <div class="firefly"></div>
 
   <div class="container">
+    <div id="error">
+      <p>%ERROR_MESSAGE%</p>
+    </div>
     <div class="right">
       <svg viewBox="0 0 320 300">
         <defs>
@@ -47,8 +50,8 @@
           d="m 40,120.00016 239.99984,-3.2e-4 c 0,0 24.99263,0.79932 25.00016,35.00016 0.008,34.20084 -25.00016,35 -25.00016,35 h -239.99984 c 0,-0.0205 -25,4.01348 -25,38.5 0,34.48652 25,38.5 25,38.5 h 215 c 0,0 20,-0.99604 20,-25 0,-24.00396 -20,-25 -20,-25 h -190 c 0,0 -20,1.71033 -20,25 0,24.00396 20,25 20,25 h 168.57143" />
       </svg>
       <div class="form">
-        <form action="/" method="POST">
-          <label for="email" id="emailLabel">Nazwa Użytkownika</label>
+        <form action="%SEND_URL%" method="POST">
+          <label for="username" id="emailLabel">Nazwa Użytkownika</label>
           <input type="text" name="username" id="email">
           <label for="password" id="passwordLabel">Hasło</label>
           <input type="password" name="password" id="password">
@@ -60,7 +63,7 @@
 </body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 <script src="/script/scriptLogin.min.js"></script>
-<!-- <script src="/script/script.min.js"></script> -->
+<!-- <script src="script.min.js"></script> -->
 <script>
   window.onload = function () {
     document.getElementById("loadingPage").style.display = "none";

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popup</title>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- <div id="bg-oppacity"></div>
+    <popup id="update-info">
+        <button id="close-update" type="button"><i class="fas fa-times"></i></button>
+        <h1>Nowa Aktualizacja</h1>
+        <h3>
+            Została wypuszczona nowa aktualizacja oprogramowania
+        </h3>
+        <ul id="data-update">
+            <li>Wersja: <span>0.0.1</span></li>
+            <li>Opis: <span>Aktualizacja oprogramowania w wersji "0.0.2" naprawia błędy związane z wczytywanie strony internetowej i pliku konfiguracyjnego. Dodaje możliwość ustawiania roli użytkownikowi(admin, użytkonik). Poprawia również wygląd strony internetowej.</span></li>
+        </ul>
+        <a href="/update"><button id="update-info-update">Aktualizuj</button></a>
+    </popup> -->
+    <!-- <popup id="update-bar">
+        <button id="close-popup-bar" type="button" title="Zamknij Komunikat"><i class="fas fa-times"></i></button>
+        <span>Nowa aktualizacja</span>
+        <button type="button" id="show-update-detail" title="Pokaż szczegóły aktualizacji">Zobacz Szczegóły</button>
+    </popup> -->
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function(){
+        $("#update-bar").addClass("show");
+
+        $("bar").delegate('#close-update', 'click', function(){
+            $("#update-info").removeClass("show").addClass("hide");
+            setTimeout(function(){
+                $("#update-info").remove();
+                $("#bg-oppacity").remove();
+            }, 1000);
+        });
+
+        $("bar").delegate('#show-update-detail', 'click', function(){
+            $('#update-bar').remove();
+            $('body').prepend(`<div id="bg-oppacity"></div>
+                <popup id="update-info" class="show">
+                    <button id="close-update" type="button"><i class="fas fa-times"></i></button>
+                    <h1>Nowa Aktualizacja</h1>
+                    <h3>
+                        Została wypuszczona nowa aktualizacja oprogramowania
+                    </h3>
+                    <ul id="data-update">
+                        <li>Wersja: <span>0.0.1</span></li>
+                        <li>Opis: <span>Aktualizacja oprogramowania w wersji "0.0.2" naprawia błędy związane z wczytywanie strony internetowej i pliku konfiguracyjnego. Dodaje możliwość ustawiania roli użytkownikowi(admin, użytkonik). Poprawia również wygląd strony internetowej.</span></li>
+                    </ul>
+                    <a href="/update"><button id="update-info-update">Aktualizuj</button></a>
+                </popup>`)
+        });
+
+        $.ajax({
+            url: '/updatesoftware/check',
+            method: 'POST',
+            success: function(data){
+                if(data.status == 'success'){
+                    if(data.update == true){
+                        $('body').prepend(`<popup id="update-bar">
+                                <button id="close-popup-bar" type="button" title="Zamknij Komunikat"><i class="fas fa-times"></i></button>
+                                <span>Nowa aktualizacja</span>
+                                <button type="button" id="show-update-detail" title="Pokaż szczegóły aktualizacji">Zobacz Szczegóły</button>
+                            </popup>`);
+                    }
+                }
+            }
+        });
+    });
+</script>
+</html>

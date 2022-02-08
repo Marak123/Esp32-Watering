@@ -70,23 +70,30 @@ public:
   void initWebSocket() { using namespace std::placeholders; ws.onEvent(std::bind(&WebServer::onEvent, this, _1, _2, _3, _4, _5, _6)); server.addHandler(&ws); }
 
   //Zmienne na stronie
-  String processor(const String &var) {
-    if (var == "ARRAYS_WITH_DATA")
-    {
-      return arrCreator::allArray();
-    }
+  String processor(const String &var, String send_url="/", String messageError="Błędne dane logowania") {
+    if (var == "ARRAYS_WITH_DATA") return arrCreator::allArray();
+    else if(var == "ERROR_MESSAGE") return messageError;
+    else if(var == "SEND_URL") return send_url;
+    else if(var == "ARRAY_VERSION_SOFTWARE") return arrCreator::versionArray();
     return "%";
   }
 
-  bool is_authentified(AsyncWebServerRequest *request)
+  bool is_authentified(AsyncWebServerRequest *request, bool updateAuth=false)
   {
     if (request->hasHeader("Cookie"))
     {
       String cookie = request->header("Cookie");
-      for(int i=0; i < Accounts.size(); i++)
-        for(int j=0; j < Accounts[i].session.size(); j++){
-          String cook = "ESPSESSIONID=" + String(Accounts[i].session[j].token);
-          if (cookie.indexOf(cook) != -1) if (ownTime::compareDate(Accounts[i].session[j].expDate))  return true;
+      for(s_AccountSchema acc : Accounts)
+        if(!updateAuth){
+          for(s_session ss : acc.session){
+            String cook = "ESPSESSIONID=" + String(ss.token);
+            if (cookie.indexOf(cook) != -1) if (ownTime::compareDate(ss.expDate))  return true;
+          }
+        }else{
+          for(s_session ss : acc.adminSession){
+            String cook = "ESPSESSIONUPDATEID=" + String(ss.token);
+            if (cookie.indexOf(cook) != -1) if (ownTime::compareDate(ss.expDate)) return true;
+          }
         }
     }
     return false;
@@ -99,7 +106,7 @@ public:
     server.on("/", [this](AsyncWebServerRequest *request) {
       if (request->hasArg("logout"))
       {
-        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/login/index.html");
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/login/index.html", String(), false, [this](const String &var) -> String { return this->processor(var, "/", ""); });
         response->addHeader("Set-Cookie", "ESPSESSIONID=0");
         response->addHeader("Location", "/");
         request->send(response);
@@ -120,7 +127,7 @@ public:
       }
 
       if(is_authentified(request)){
-        request->send(SPIFFS, "/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
+        request->send(SPIFFS, "/main/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
         return;
       }
 
@@ -128,7 +135,7 @@ public:
         for (int i = 0; i < Accounts.size(); i++)
           if (request->arg("username") == String(Accounts[i].username) && request->arg("password") == String(Accounts[i].password))
           {
-            AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
+            AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/main/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
             response->addHeader("Cache-Control", "no-cache");
 
             struct s_session tkNew = generateWebToken();
@@ -137,10 +144,10 @@ public:
             request->send(response);
             return;
           }
-      request->send(SPIFFS, "/login/index.html");
+      request->send(SPIFFS, "/login/index.html", String(), false, [this](const String &var) -> String { return this->processor(var, "/", ""); });
     });
 
-        //LOGIN
+    //LOGIN
     server.on("/script/scriptLogin.min.js", HTTP_GET, [](AsyncWebServerRequest *request){ request->send(SPIFFS, "/login/script.min.js", "text/js"); });
     server.on("/style/styleLogin.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/login/style.min.css", "text/css"); });
 
@@ -148,9 +155,13 @@ public:
     server.on("/script/scriptNotfound.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/notFound/script.min.js", "text/js"); });
     server.on("/style/styleNotFound.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/notFound/style.min.css", "text/css"); });
 
-  //MAIN
-    server.on("/scripts/all.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/scripts/all.min.js", "text/js"); });
-    server.on("/styles/style.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/styles/style.min.css", "text/css"); });
+    //MAIN
+    server.on("/scripts/all.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/main/all.min.js", "text/js"); });
+    server.on("/styles/style.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/main/style.min.css", "text/css"); });
+
+    //UPDATE
+    server.on("/scripts/scriptUpdate.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/update/script.js", "text/js"); });
+    server.on("/styles/styleUpdate.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/update/style.css", "text/css"); });
 
     //Image file
     server.on("/images/logo.png", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/images/logo.png", "image/png"); });
@@ -474,6 +485,64 @@ public:
                 return;
               }
               request->send(200, "SUCCESS");
+            });
+
+        server.on(
+            "/updatesoftware/check", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what"}, {"checkUpdate"})){
+                request->send(401, "Blad pobierania danych, Brak dostepu.");
+                return;
+              }
+
+              request->send(200, "plain/text", updateSoft.checkUpdate());
+            });
+
+        server.on(
+            "/update", HTTP_GET, [this](AsyncWebServerRequest *request)
+            {
+
+              if(is_authentified(request, true)){
+                request->send(SPIFFS, "/update/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+                return;
+              }
+
+              request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+            });
+
+        server.on(
+            "/update", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              String msg = "";
+              if (request->hasParam("username", true) && request->hasParam("password", true)){
+                for (int i = 0; i < Accounts.size(); i++)
+                  if (request->arg("username") == String(Accounts[i].username) && request->arg("password") == String(Accounts[i].password))
+                  {
+                    if(!Accounts[i].isAdmin) break;
+                    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/update/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
+                    response->addHeader("Cache-Control", "no-cache");
+
+                    struct s_session tkNew = generateWebToken(0, 0, 5);
+                    Accounts[i].adminSession.push_back(tkNew);
+                    response->addHeader("Set-Cookie", "ESPSESSIONUPDATEID=" + tkNew.token);
+                    request->send(response);
+                    return;
+                  }
+                msg = "Błędne dane logowania.";
+              }
+
+              request->send(SPIFFS, "/login/index.html", "text/html", false, [this, msg](const String &var) -> String { return this->processor(var, "/update", msg); });
+            });
+
+        server.on(
+            "/update/make_update", HTTP_POST, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "version"}, {"updateSoftware_adm"})){
+                request->send(401, "Wystąpił błąd, Brak dostepu.");
+                return;
+              }
+
+              request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
             });
 
         server.onNotFound([](AsyncWebServerRequest *request)

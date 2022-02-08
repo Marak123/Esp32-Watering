@@ -6,23 +6,27 @@
 // #include <ESP32_FTPClient.h>
 #include <DHT.h>
 
+#include <ownUpdate.h>
 #include <WebServer.h>
 #include <ownTime.h>
 #include <struct.h>
-// #include <configFile.h>
+#include <configFile.h>
 #include <function.h>
 #include <mainFun.h>
 
 //Dolaczanie zmiennych
 #include <variables.h>
+// FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);
 
 //Inicjacja Klasy Połączenia FTP
-FTP ftp(dataFtp.addrIP, dataFtp.username, dataFtp.password);
-
+// if(dataFtp.port != 0) {FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);}
+// else {FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password);}
+FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);
 //Wywołanie klasy WebSocket
 WebServer webserver(&varPins, &ftp);
 
 // confFile config("/configFile.json");
+
 
 void setup()
 {
@@ -32,20 +36,15 @@ void setup()
   //Inicjacja odczytu danych z pliku
   initSPIFFS();
 
+  config config;
+  config.begin();
+  config.loadConfig();
+  config.saveConfig();
+
   //Ładowanie danych konfiguracyjnych z pliku json
   // config.loadConfig();
   // TimeS.getTime();
-
-  //Inicjacja pinow
-  initialPins(varPins.pins, varPins.powerPins);
-
-  Serial.print("SSID: ");
-  Serial.println(dataWifi.SSID);
-  Serial.print("PASS: ");
-  Serial.println(dataWifi.password);
-
-  //Inicjacja WiFi
-  initWiFi(dataWifi.SSID, dataWifi.password);
+  initWiFi();
 
   // int h = TimeS.Hour();
   // int m = TimeS.Minute();
@@ -62,13 +61,26 @@ void setup()
   //Inicjacja Serwera
   webserver.ServerInit();
 
-  //Inicjacja sensora temperatury
-  initTempSensor();
 
   //Tworzenie konta domyślnego użytkownika strony
-  Accounts.push_back(createAccount("admin", "admin"));
-  String ss = arrCreator::weekActionList();
-  Serial.println(ss);
+  // Accounts.push_back(createAccount("admin", "admin"));
+
+
+
+
+  int usedBytes = SPIFFS.usedBytes();
+  int totalBytes = SPIFFS.totalBytes();
+  int result = usedBytes * 100 / totalBytes;
+  Serial.print("SPIFFS used: ");
+  Serial.print(result);
+  Serial.println("%");
+
+
+  //Inicjacja pinow
+  initialPins(varPins.pins, varPins.powerPins);
+
+  //Inicjacja sensora temperatury
+  initTempSensor();
 }
 
 bool CntMain = false;
@@ -94,9 +106,11 @@ void loop()
     CntMain = false;
 
     StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet = inLoopActionPerform();
-    if(jsonRet["what"] == "action-done") webserver.notifyClients(jsonRet);
+    if (jsonRet["what"] == "action-done")
+      webserver.notifyClients(jsonRet);
   }
-  if((millis() - StartTemp) >= 10000){
+  if ((millis() - StartTemp) >= 10000)
+  {
     StartTemp = 0;
     CntTemp = false;
     readTemperature();
@@ -104,10 +118,12 @@ void loop()
     StaticJsonDocument<JSON_OBJECT_SIZE(100)> jsonTemp;
     jsonTemp["what"] = "temperatureRead";
 
-    for(int i=0; i < varPins.tempData.size(); i++){
+    for (int i = 0; i < varPins.tempData.size(); i++)
+    {
       StaticJsonDocument<JSON_OBJECT_SIZE(10)> tmPin;
-      for(int j=0; j < varPins.pins.size(); j++)
-        if (varPins.pins[j].idPin == varPins.tempData[i].idPinTemp){
+      for (int j = 0; j < varPins.pins.size(); j++)
+        if (varPins.pins[j].idPin == varPins.tempData[i].idPinTemp)
+        {
           tmPin["pinID"] = varPins.pins[j].nrPin;
           break;
         }

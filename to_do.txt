@@ -1,0 +1,5 @@
+Formularz kontaktowy z twórcą oprogramowania.
+Gniazdo pamięci sd.
+Dokończyć zapisywanie danych do pliku.
+Naprawić stronę, wygląd.
+Połączenie FTP z serwerem

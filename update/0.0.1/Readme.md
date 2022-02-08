@@ -1,0 +1,1 @@
+To jest wersja testowa do sprawdzenia i debugowania kodu

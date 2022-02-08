@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update</title>
+
+    <link rel="stylesheet" href="/styles/styleUpdate.min.css">
+    <!-- <link rel="stylesheet" href="style.css"> -->
+</head>
+<body>
+    <alert id="info" style="display: none;">
+        <div id="bg-cover"></div>
+        <info>
+            <p id="info-message">Error</p>
+            <div id="close-button">
+                <button id="close-alert">OK</button>
+            </div>
+            <div id="yes-no-choice">
+                <button id="yes-alert">Tak</button>
+                <button id="no-alert">Nie</button>
+            </div>
+        </info>
+    </alert>
+    <header id="main">
+        <div id="version">
+            <div>
+                <h2>Obecna wersja: </h2>
+                <p id="current_version">error</p>
+            </div>
+            <div>
+                <h2>Do zainstalowania: </h2>
+                <select name="version_update" id="version_select" title="Wybierz wersje oprogramowania do aktualizacji">
+                    <option value="error" selected>error</option>
+                </select>
+            </div>
+        </div>
+        <div id="description">
+            <h2>Opis aktualizacji(<span id="ver_desc_nr"></span>)</h2>
+            <p id="desc_text">
+                <error-p>Error 404, ładowanie opisu nie powiodło się.<br> Sprobuj ponownie. <br><br>Odśwież stronę lub załaduj stronę ponownie. <br> Jeżeli odświeżąnie nie pomaga naciśnij kompinacje klawiszy na klawiaturze "ctrl + F5"</error-p>
+            </p>
+        </div>
+        <div id="update_button_container">
+            <button id="update_button" type="button">Aktualizuj</button>
+        </div>
+    </header>
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>%ARRAY_VERSION_SOFTWARE%</script>
+<script src="/scripts/scriptUpdate.js"></script>
+<!-- <script src="script.js"></script> -->
+</html>

@@ -1,0 +1,1 @@
+Kontroler i zbior wersji oprogramowania na platforme esp32.

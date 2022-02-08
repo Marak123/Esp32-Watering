@@ -1,565 +1,688 @@
-// Class to simplify HTTP fetching on Arduino
-// (c) Copyright 2010-2011 MCQN Ltd
-// Released under Apache License, version 2.0
+/* HTTPClient.cpp */
+/* Copyright (C) 2012 mbed.org, MIT License
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-#include "HttpClient.h"
-#include "b64.h"
-#ifdef PROXY_ENABLED // currently disabled as introduces dependency on Dns.h in Ethernet
-#include <Dns.h>
-#endif
+//Debug is disabled by default
+#if 0
+//Enable debug
+#include <cstdio>
+#define DBG(x, ...) std::printf("[HTTPClient : DBG]"x"\r\n", ##__VA_ARGS__); 
+#define WARN(x, ...) std::printf("[HTTPClient : WARN]"x"\r\n", ##__VA_ARGS__); 
+#define ERR(x, ...) std::printf("[HTTPClient : ERR]"x"\r\n", ##__VA_ARGS__); 
 
-// Initialize constants
-const char* HttpClient::kUserAgent = "Arduino/2.2.0";
-const char* HttpClient::kContentLengthPrefix = HTTP_HEADER_CONTENT_LENGTH ": ";
-
-#ifdef PROXY_ENABLED // currently disabled as introduces dependency on Dns.h in Ethernet
-HttpClient::HttpClient(Client& aClient, const char* aProxy, uint16_t aProxyPort)
- : iClient(&aClient), iProxyPort(aProxyPort)
-{
-  resetState();
-  if (aProxy)
-  {
-    // Resolve the IP address for the proxy
-    DNSClient dns;
-    dns.begin(Ethernet.dnsServerIP());
-    // Not ideal that we discard any errors here, but not a lot we can do in the ctor
-    // and we'll get a connect error later anyway
-    (void)dns.getHostByName(aProxy, iProxyAddress);
-  }
-}
 #else
-HttpClient::HttpClient(Client& aClient)
- : iClient(&aClient), iProxyPort(0)
+//Disable debug
+#define DBG(x, ...) 
+#define WARN(x, ...)
+#define ERR(x, ...) 
+
+#endif
+
+#define HTTP_PORT 80
+
+#define OK 0
+
+#define MIN(x,y) (((x)<(y))?(x):(y))
+#define MAX(x,y) (((x)>(y))?(x):(y))
+
+#define CHUNK_SIZE 256
+
+#include <cstring>
+
+#include "HTTPClient.h"
+
+HTTPClient::HTTPClient() :
+m_sock(), m_basicAuthUser(NULL), m_basicAuthPassword(NULL), m_httpResponseCode(0)
 {
-  resetState();
+
+}
+
+HTTPClient::~HTTPClient()
+{
+
+}
+
+#if 1
+char auth[512];
+void HTTPClient::basicAuth(const char* user, const char* password) //Basic Authentification
+{
+  m_basicAuthUser = user;
+  m_basicAuthPassword = password;
+  createauth(m_basicAuthUser, m_basicAuthPassword, auth, strlen(auth));
 }
 #endif
 
-void HttpClient::resetState()
+HTTPResult HTTPClient::get(const char* url, IHTTPDataIn* pDataIn, int timeout /*= HTTP_CLIENT_DEFAULT_TIMEOUT*/) //Blocking
 {
-  iState = eIdle;
-  iStatusCode = 0;
-  iContentLength = 0;
-  iBodyLengthConsumed = 0;
-  iContentLengthPtr = kContentLengthPrefix;
-  iHttpResponseTimeout = kHttpResponseTimeout;
+  return connect(url, HTTP_GET, NULL, pDataIn, timeout);
 }
 
-void HttpClient::stop()
+HTTPResult HTTPClient::get(const char* url, char* result, size_t maxResultLen, int timeout /*= HTTP_CLIENT_DEFAULT_TIMEOUT*/) //Blocking
 {
-  iClient->stop();
-  resetState();
+  HTTPText str(result, maxResultLen);
+  return get(url, &str, timeout);
 }
 
-void HttpClient::beginRequest()
+HTTPResult HTTPClient::post(const char* url, const IHTTPDataOut& dataOut, IHTTPDataIn* pDataIn, int timeout /*= HTTP_CLIENT_DEFAULT_TIMEOUT*/) //Blocking
 {
-  iState = eRequestStarted;
+  return connect(url, HTTP_POST, (IHTTPDataOut*)&dataOut, pDataIn, timeout);
 }
 
-int HttpClient::startRequest(const char* aServerName, uint16_t aServerPort, const char* aURLPath, const char* aHttpMethod, const char* aUserAgent)
+HTTPResult HTTPClient::put(const char* url, const IHTTPDataOut& dataOut, IHTTPDataIn* pDataIn, int timeout /*= HTTP_CLIENT_DEFAULT_TIMEOUT*/) //Blocking
 {
-    tHttpState initialState = iState;
-    if ((eIdle != iState) && (eRequestStarted != iState))
+  return connect(url, HTTP_PUT, (IHTTPDataOut*)&dataOut, pDataIn, timeout);
+}
+
+HTTPResult HTTPClient::del(const char* url, IHTTPDataIn* pDataIn, int timeout /*= HTTP_CLIENT_DEFAULT_TIMEOUT*/) //Blocking
+{
+  return connect(url, HTTP_DELETE, NULL, pDataIn, timeout);
+}
+
+
+int HTTPClient::getHTTPResponseCode()
+{
+  return m_httpResponseCode;
+}
+
+#define CHECK_CONN_ERR(ret) \
+  do{ \
+    if(ret) { \
+      m_sock.close(); \
+      ERR("Connection error (%d)", ret); \
+      return HTTP_CONN; \
+    } \
+  } while(0)
+
+#define PRTCL_ERR() \
+  do{ \
+    m_sock.close(); \
+    ERR("Protocol error"); \
+    return HTTP_PRTCL; \
+  } while(0)
+
+HTTPResult HTTPClient::connect(const char* url, HTTP_METH method, IHTTPDataOut* pDataOut, IHTTPDataIn* pDataIn, int timeout) //Execute request
+{ 
+  m_httpResponseCode = 0; //Invalidate code
+  m_timeout = timeout;
+  
+  pDataIn->writeReset();
+  if( pDataOut )
+  {
+    pDataOut->readReset();
+  }
+
+  char scheme[8];
+  uint16_t port;
+  char host[32];
+  char path[64];
+  //First we need to parse the url (http[s]://host[:port][/[path]]) -- HTTPS not supported (yet?)
+  HTTPResult res = parseURL(url, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path));
+  if(res != HTTP_OK)
+  {
+    ERR("parseURL returned %d", res);
+    return res;
+  }
+
+  if(port == 0) //TODO do handle HTTPS->443
+  {
+    port = 80;
+  }
+
+  DBG("Scheme: %s", scheme);
+  DBG("Host: %s", host);
+  DBG("Port: %d", port);
+  DBG("Path: %s", path);
+
+  //Connect
+  DBG("Connecting socket to server");
+  int ret = m_sock.connect(host, port);
+  if (ret < 0)
+  {
+    m_sock.close();
+    ERR("Could not connect");
+    return HTTP_CONN;
+  }
+
+  //Send request
+  DBG("Sending request");
+  char buf[CHUNK_SIZE];
+  const char* meth = (method==HTTP_GET)?"GET":(method==HTTP_POST)?"POST":(method==HTTP_PUT)?"PUT":(method==HTTP_DELETE)?"DELETE":"";
+  if((!m_basicAuthUser)&&(!strlen(m_basicAuthUser))){
+    snprintf(buf, sizeof(buf), "%s %s HTTP/1.1\r\nHost: %s\r\n", meth, path, host); //Write request
+  } else {
+    //printf("auth: %s\r\n", auth);
+    snprintf(buf, sizeof(buf), "%s %s HTTP/1.1\r\nHost: %s\r\n%s\r\n", meth, path, host, auth); //Write request with basic auth
+  }
+  ret = send(buf);
+  if(ret)
+  {
+    m_sock.close();
+    ERR("Could not write request");
+    return HTTP_CONN;
+  }
+
+  //Send all headers
+
+  //Send default headers
+  DBG("Sending headers");
+  if( pDataOut != NULL )
+  {
+    if( pDataOut->getIsChunked() )
     {
-        return HTTP_ERROR_API;
-    }
-
-#ifdef PROXY_ENABLED
-    if (iProxyPort)
-    {
-        if (!iClient->connect(iProxyAddress, iProxyPort) > 0)
-        {
-#ifdef LOGGING
-            Serial.println("Proxy connection failed");
-#endif
-            return HTTP_ERROR_CONNECTION_FAILED;
-        }
+      ret = send("Transfer-Encoding: chunked\r\n");
+      CHECK_CONN_ERR(ret);
     }
     else
-#endif
     {
-        if (!iClient->connect(aServerName, aServerPort) > 0)
-        {
-#ifdef LOGGING
-            Serial.println("Connection failed");
-#endif
-            return HTTP_ERROR_CONNECTION_FAILED;
-        }
+      snprintf(buf, sizeof(buf), "Content-Length: %d\r\n", pDataOut->getDataLen());
+      ret = send(buf);
+      CHECK_CONN_ERR(ret);
     }
-
-    // Now we're connected, send the first part of the request
-    int ret = sendInitialHeaders(aServerName, IPAddress(0,0,0,0), aServerPort, aURLPath, aHttpMethod, aUserAgent);
-    if ((initialState == eIdle) && (HTTP_SUCCESS == ret))
+    char type[48];
+    if( pDataOut->getDataType(type, 48) == HTTP_OK )
     {
-        // This was a simple version of the API, so terminate the headers now
-        finishHeaders();
+      snprintf(buf, sizeof(buf), "Content-Type: %s\r\n", type);
+      ret = send(buf);
+      CHECK_CONN_ERR(ret);
     }
-    // else we'll call it in endRequest or in the first call to print, etc.
+  }
+  
+  //Close headers
+  DBG("Headers sent");
+  ret = send("\r\n");
+  CHECK_CONN_ERR(ret);
 
-    return ret;
-}
-
-int HttpClient::startRequest(const IPAddress& aServerAddress, const char* aServerName, uint16_t aServerPort, const char* aURLPath, const char* aHttpMethod, const char* aUserAgent)
-{
-    tHttpState initialState = iState;
-    if ((eIdle != iState) && (eRequestStarted != iState))
+  size_t trfLen;
+  
+  //Send data (if available)
+  if( pDataOut != NULL )
+  {
+    DBG("Sending data");
+    while(true)
     {
-        return HTTP_ERROR_API;
-    }
-
-#ifdef PROXY_ENABLED
-    if (iProxyPort)
-    {
-        if (!iClient->connect(iProxyAddress, iProxyPort) > 0)
-        {
-#ifdef LOGGING
-            Serial.println("Proxy connection failed");
-#endif
-            return HTTP_ERROR_CONNECTION_FAILED;
-        }
-    }
-    else
-#endif
-    {
-        if (!iClient->connect(aServerAddress, aServerPort) > 0)
-        {
-#ifdef LOGGING
-            Serial.println("Connection failed");
-#endif
-            return HTTP_ERROR_CONNECTION_FAILED;
-        }
-    }
-
-    // Now we're connected, send the first part of the request
-    int ret = sendInitialHeaders(aServerName, aServerAddress, aServerPort, aURLPath, aHttpMethod, aUserAgent);
-    if ((initialState == eIdle) && (HTTP_SUCCESS == ret))
-    {
-        // This was a simple version of the API, so terminate the headers now
-        finishHeaders();
-    }
-    // else we'll call it in endRequest or in the first call to print, etc.
-
-    return ret;
-}
-
-int HttpClient::sendInitialHeaders(const char* aServerName, IPAddress aServerIP, uint16_t aPort, const char* aURLPath, const char* aHttpMethod, const char* aUserAgent)
-{
-#ifdef LOGGING
-    Serial.println("Connected");
-#endif
-    // Send the HTTP command, i.e. "GET /somepath/ HTTP/1.0"
-    iClient->print(aHttpMethod);
-    iClient->print(" ");
-#ifdef PROXY_ENABLED
-    if (iProxyPort)
-    {
-      // We're going through a proxy, send a full URL
-      iClient->print("http://");
-      if (aServerName)
+      size_t writtenLen = 0;
+      pDataOut->read(buf, CHUNK_SIZE, &trfLen);
+      if( pDataOut->getIsChunked() )
       {
-        // We've got a server name, so use it
-        iClient->print(aServerName);
+        //Write chunk header
+        char chunkHeader[16];
+        snprintf(chunkHeader, sizeof(chunkHeader), "%X\r\n", trfLen); //In hex encoding
+        ret = send(chunkHeader);
+        CHECK_CONN_ERR(ret);
+      }
+      else if( trfLen == 0 )
+      {
+        break;
+      }
+      if( trfLen != 0 )
+      {
+        ret = send(buf, trfLen);
+        CHECK_CONN_ERR(ret);
+      }
+
+      if( pDataOut->getIsChunked()  )
+      {
+        ret = send("\r\n"); //Chunk-terminating CRLF
+        CHECK_CONN_ERR(ret);
       }
       else
       {
-        // We'll have to use the IP address
-        iClient->print(aServerIP);
-      }
-      if (aPort != kHttpPort)
-      {
-        iClient->print(":");
-        iClient->print(aPort);
-      }
-    }
-#endif
-    iClient->print(aURLPath);
-    iClient->println(" HTTP/1.1");
-    // The host header, if required
-    if (aServerName)
-    {
-        iClient->print("Host: ");
-        iClient->print(aServerName);
-        if (aPort != kHttpPort)
+        writtenLen += trfLen;
+        if( writtenLen >= pDataOut->getDataLen() )
         {
-          iClient->print(":");
-          iClient->print(aPort);
+          break;
         }
-        iClient->println();
+      }
+
+      if( trfLen == 0 )
+      {
+        break;
+      }
     }
-    // And user-agent string
-    if (aUserAgent)
+
+  }
+  
+  //Receive response
+  DBG("Receiving response");
+  ret = recv(buf, CHUNK_SIZE - 1, CHUNK_SIZE - 1, &trfLen); //Read n bytes
+  CHECK_CONN_ERR(ret);
+
+  buf[trfLen] = '\0';
+
+  char* crlfPtr = strstr(buf, "\r\n");
+  if(crlfPtr == NULL)
+  {
+    PRTCL_ERR();
+  }
+
+  int crlfPos = crlfPtr - buf;
+  buf[crlfPos] = '\0';
+
+  //Parse HTTP response
+  if( sscanf(buf, "HTTP/%*d.%*d %d %*[^\r\n]", &m_httpResponseCode) != 1 )
+  {
+    //Cannot match string, error
+    ERR("Not a correct HTTP answer : %s\n", buf);
+    PRTCL_ERR();
+  }
+
+  if( (m_httpResponseCode < 200) || (m_httpResponseCode >= 300) )
+  {
+    //Did not return a 2xx code; TODO fetch headers/(&data?) anyway and implement a mean of writing/reading headers 
+    WARN("Response code %d", m_httpResponseCode);
+    PRTCL_ERR();
+  }
+
+  DBG("Reading headers");
+
+  memmove(buf, &buf[crlfPos+2], trfLen - (crlfPos + 2) + 1); //Be sure to move NULL-terminating char as well
+  trfLen -= (crlfPos + 2);
+
+  size_t recvContentLength = 0;
+  bool recvChunked = false;
+  //Now get headers
+  while( true )
+  {
+    crlfPtr = strstr(buf, "\r\n");
+    if(crlfPtr == NULL)
     {
-        sendHeader(HTTP_HEADER_USER_AGENT, aUserAgent);
+      if( trfLen < CHUNK_SIZE - 1 )
+      {
+        size_t newTrfLen;
+        ret = recv(buf + trfLen, 1, CHUNK_SIZE - trfLen - 1, &newTrfLen);
+        trfLen += newTrfLen;
+        buf[trfLen] = '\0';
+        DBG("Read %d chars; In buf: [%s]", newTrfLen, buf);
+        CHECK_CONN_ERR(ret);
+        continue;
+      }
+      else
+      {
+        PRTCL_ERR();
+      }
+    }
+
+    crlfPos = crlfPtr - buf;
+
+    if(crlfPos == 0) //End of headers
+    {
+      DBG("Headers read");
+      memmove(buf, &buf[2], trfLen - 2 + 1); //Be sure to move NULL-terminating char as well
+      trfLen -= 2;
+      break;
+    }
+
+    buf[crlfPos] = '\0';
+
+    char key[32];
+    char value[32];
+
+    key[31] = '\0';
+    value[31] = '\0';
+
+    int n = sscanf(buf, "%31[^:]: %31[^\r\n]", key, value);
+    if ( n == 2 )
+    {
+      DBG("Read header : %s: %s\n", key, value);
+      if( !strcmp(key, "Content-Length") )
+      {
+        sscanf(value, "%d", &recvContentLength);
+        pDataIn->setDataLen(recvContentLength);
+      }
+      else if( !strcmp(key, "Transfer-Encoding") )
+      {
+        if( !strcmp(value, "Chunked") || !strcmp(value, "chunked") )
+        {
+          recvChunked = true;
+          pDataIn->setIsChunked(true);
+        }
+      }
+      else if( !strcmp(key, "Content-Type") )
+      {
+        pDataIn->setDataType(value);
+      }
+
+      memmove(buf, &buf[crlfPos+2], trfLen - (crlfPos + 2) + 1); //Be sure to move NULL-terminating char as well
+      trfLen -= (crlfPos + 2);
+
     }
     else
     {
-        sendHeader(HTTP_HEADER_USER_AGENT, kUserAgent);
+      ERR("Could not parse header");
+      PRTCL_ERR();
     }
-    // We don't support persistent connections, so tell the server to
-    // close this connection after we're done
-    sendHeader(HTTP_HEADER_CONNECTION, "close");
 
-    // Everything has gone well
-    iState = eRequestStarted;
-    return HTTP_SUCCESS;
-}
+  }
 
-void HttpClient::sendHeader(const char* aHeader)
-{
-    iClient->println(aHeader);
-}
+  //Receive data
+  DBG("Receiving data");
+  while(true)
+  {
+    size_t readLen = 0;
 
-void HttpClient::sendHeader(const char* aHeaderName, const char* aHeaderValue)
-{
-    iClient->print(aHeaderName);
-    iClient->print(": ");
-    iClient->println(aHeaderValue);
-}
-
-void HttpClient::sendHeader(const char* aHeaderName, const int aHeaderValue)
-{
-    iClient->print(aHeaderName);
-    iClient->print(": ");
-    iClient->println(aHeaderValue);
-}
-
-void HttpClient::sendBasicAuth(const char* aUser, const char* aPassword)
-{
-    // Send the initial part of this header line
-    iClient->print("Authorization: Basic ");
-    // Now Base64 encode "aUser:aPassword" and send that
-    // This seems trickier than it should be but it's mostly to avoid either
-    // (a) some arbitrarily sized buffer which hopes to be big enough, or
-    // (b) allocating and freeing memory
-    // ...so we'll loop through 3 bytes at a time, outputting the results as we
-    // go.
-    // In Base64, each 3 bytes of unencoded data become 4 bytes of encoded data
-    unsigned char input[3];
-    unsigned char output[5]; // Leave space for a '\0' terminator so we can easily print
-    int userLen = strlen(aUser);
-    int passwordLen = strlen(aPassword);
-    int inputOffset = 0;
-    for (int i = 0; i < (userLen+1+passwordLen); i++)
+    if( recvChunked )
     {
-        // Copy the relevant input byte into the input
-        if (i < userLen)
+      //Read chunk header
+      bool foundCrlf;
+      do
+      {
+        foundCrlf = false;
+        crlfPos=0;
+        buf[trfLen]=0;
+        if(trfLen >= 2)
         {
-            input[inputOffset++] = aUser[i];
+          for(; crlfPos < trfLen - 2; crlfPos++)
+          {
+            if( buf[crlfPos] == '\r' && buf[crlfPos + 1] == '\n' )
+            {
+              foundCrlf = true;
+              break;
+            }
+          }
         }
-        else if (i == userLen)
+        if(!foundCrlf) //Try to read more
         {
-            input[inputOffset++] = ':';
+          if( trfLen < CHUNK_SIZE )
+          {
+            size_t newTrfLen;
+            ret = recv(buf + trfLen, 0, CHUNK_SIZE - trfLen - 1, &newTrfLen);
+            trfLen += newTrfLen;
+            CHECK_CONN_ERR(ret);
+            continue;
+          }
+          else
+          {
+            PRTCL_ERR();
+          }
         }
-        else
-        {
-            input[inputOffset++] = aPassword[i-(userLen+1)];
-        }
-        // See if we've got a chunk to encode
-        if ( (inputOffset == 3) || (i == userLen+passwordLen) )
-        {
-            // We've either got to a 3-byte boundary, or we've reached then end
-            b64_encode(input, inputOffset, output, 4);
-            // NUL-terminate the output string
-            output[4] = '\0';
-            // And write it out
-            iClient->print((char*)output);
-// FIXME We might want to fill output with '=' characters if b64_encode doesn't
-// FIXME do it for us when we're encoding the final chunk
-            inputOffset = 0;
-        }
+      } while(!foundCrlf);
+      buf[crlfPos] = '\0';
+      int n = sscanf(buf, "%x", &readLen);
+      if(n!=1)
+      {
+        ERR("Could not read chunk length");
+        PRTCL_ERR();
+      }
+
+      memmove(buf, &buf[crlfPos+2], trfLen - (crlfPos + 2)); //Not need to move NULL-terminating char any more
+      trfLen -= (crlfPos + 2);
+
+      if( readLen == 0 )
+      {
+        //Last chunk
+        break;
+      }
     }
-    // And end the header we've sent
-    iClient->println();
-}
-
-void HttpClient::finishHeaders()
-{
-    iClient->println();
-    iState = eRequestSent;
-}
-
-void HttpClient::endRequest()
-{
-    if (iState < eRequestSent)
+    else
     {
-        // We still need to finish off the headers
-        finishHeaders();
+      readLen = recvContentLength;
     }
-    // else the end of headers has already been sent, so nothing to do here
-}
 
-int HttpClient::responseStatusCode()
-{
-    if (iState < eRequestSent)
-    {
-        return HTTP_ERROR_API;
-    }
-    // The first line will be of the form Status-Line:
-    //   HTTP-Version SP Status-Code SP Reason-Phrase CRLF
-    // Where HTTP-Version is of the form:
-    //   HTTP-Version   = "HTTP" "/" 1*DIGIT "." 1*DIGIT
+    DBG("Retrieving %d bytes", readLen);
 
-    char c = '\0';
     do
     {
-        // Make sure the status code is reset, and likewise the state.  This
-        // lets us easily cope with 1xx informational responses by just
-        // ignoring them really, and reading the next line for a proper response
-        iStatusCode = 0;
-        iState = eRequestSent;
+      pDataIn->write(buf, MIN(trfLen, readLen));
+      if( trfLen > readLen )
+      {
+        memmove(buf, &buf[readLen], trfLen - readLen);
+        trfLen -= readLen;
+        readLen = 0;
+      }
+      else
+      {
+        readLen -= trfLen;
+      }
 
-        unsigned long timeoutStart = millis();
-        // Psuedo-regexp we're expecting before the status-code
-        const char* statusPrefix = "HTTP/*.* ";
-        const char* statusPtr = statusPrefix;
-        // Whilst we haven't timed out & haven't reached the end of the headers
-        while ((c != '\n') && 
-               ( (millis() - timeoutStart) < iHttpResponseTimeout ))
-        {
-            if (available())
-            {
-                c = read();
-                if (c != -1)
-                {
-                    switch(iState)
-                    {
-                    case eRequestSent:
-                        // We haven't reached the status code yet
-                        if ( (*statusPtr == '*') || (*statusPtr == c) )
-                        {
-                            // This character matches, just move along
-                            statusPtr++;
-                            if (*statusPtr == '\0')
-                            {
-                                // We've reached the end of the prefix
-                                iState = eReadingStatusCode;
-                            }
-                        }
-                        else
-                        {
-                            return HTTP_ERROR_INVALID_RESPONSE;
-                        }
-                        break;
-                    case eReadingStatusCode:
-                        if (isdigit(c))
-                        {
-                            // This assumes we won't get more than the 3 digits we
-                            // want
-                            iStatusCode = iStatusCode*10 + (c - '0');
-                        }
-                        else
-                        {
-                            // We've reached the end of the status code
-                            // We could sanity check it here or double-check for ' '
-                            // rather than anything else, but let's be lenient
-                            iState = eStatusCodeRead;
-                        }
-                        break;
-                    case eStatusCodeRead:
-                        // We're just waiting for the end of the line now
-                        break;
-                    };
-                    // We read something, reset the timeout counter
-                    timeoutStart = millis();
-                }
-            }
-            else
-            {
-                // We haven't got any data, so let's pause to allow some to
-                // arrive
-                delay(kHttpWaitForDataDelay);
-            }
-        }
-        if ( (c == '\n') && (iStatusCode < 200) )
-        {
-            // We've reached the end of an informational status line
-            c = '\0'; // Clear c so we'll go back into the data reading loop
-        }
-    }
-    // If we've read a status code successfully but it's informational (1xx)
-    // loop back to the start
-    while ( (iState == eStatusCodeRead) && (iStatusCode < 200) );
+      if(readLen)
+      {
+        ret = recv(buf, 1, CHUNK_SIZE - trfLen - 1, &trfLen);
+        CHECK_CONN_ERR(ret);
+      }
+    } while(readLen);
 
-    if ( (c == '\n') && (iState == eStatusCodeRead) )
+    if( recvChunked )
     {
-        // We've read the status-line successfully
-        return iStatusCode;
-    }
-    else if (c != '\n')
-    {
-        // We must've timed out before we reached the end of the line
-        return HTTP_ERROR_TIMED_OUT;
+      if(trfLen < 2)
+      {
+        size_t newTrfLen;
+        //Read missing chars to find end of chunk
+        ret = recv(buf + trfLen, 2 - trfLen, CHUNK_SIZE - trfLen - 1, &newTrfLen);
+        CHECK_CONN_ERR(ret);
+        trfLen += newTrfLen;
+      }
+      if( (buf[0] != '\r') || (buf[1] != '\n') )
+      {
+        ERR("Format error");
+        PRTCL_ERR();
+      }
+      memmove(buf, &buf[2], trfLen - 2);
+      trfLen -= 2;
     }
     else
     {
-        // This wasn't a properly formed status line, or at least not one we
-        // could understand
-        return HTTP_ERROR_INVALID_RESPONSE;
+      break;
     }
+
+  }
+
+  m_sock.close();
+  DBG("Completed HTTP transaction");
+
+  return HTTP_OK;
 }
 
-int HttpClient::skipResponseHeaders()
+HTTPResult HTTPClient::recv(char* buf, size_t minLen, size_t maxLen, size_t* pReadLen) //0 on success, err code on failure
 {
-    // Just keep reading until we finish reading the headers or time out
-    unsigned long timeoutStart = millis();
-    // Whilst we haven't timed out & haven't reached the end of the headers
-    while ((!endOfHeadersReached()) && 
-           ( (millis() - timeoutStart) < iHttpResponseTimeout ))
+  DBG("Trying to read between %d and %d bytes", minLen, maxLen);
+  size_t readLen = 0;
+      
+  if(!m_sock.is_connected())
+  {
+    WARN("Connection was closed by server");
+    return HTTP_CLOSED; //Connection was closed by server 
+  }
+    
+  int ret;
+  while(readLen < maxLen)
+  {
+    if(readLen < minLen)
     {
-        if (available())
-        {
-            (void)readHeader();
-            // We read something, reset the timeout counter
-            timeoutStart = millis();
-        }
-        else
-        {
-            // We haven't got any data, so let's pause to allow some to
-            // arrive
-            delay(kHttpWaitForDataDelay);
-        }
-    }
-    if (endOfHeadersReached())
-    {
-        // Success
-        return HTTP_SUCCESS;
+      DBG("Trying to read at most %d bytes [Blocking]", minLen - readLen);
+      m_sock.set_blocking(false, m_timeout);
+      ret = m_sock.receive_all(buf + readLen, minLen - readLen);
     }
     else
     {
-        // We must've timed out
-        return HTTP_ERROR_TIMED_OUT;
+      DBG("Trying to read at most %d bytes [Not blocking]", maxLen - readLen);
+      m_sock.set_blocking(false, 0);
+      ret = m_sock.receive(buf + readLen, maxLen - readLen);
     }
-}
-
-bool HttpClient::endOfBodyReached()
-{
-    if (endOfHeadersReached() && (contentLength() != kNoContentLengthHeader))
+    
+    if( ret > 0)
     {
-        // We've got to the body and we know how long it will be
-        return (iBodyLengthConsumed >= contentLength());
+      readLen += ret;
     }
-    return false;
-}
-
-int HttpClient::read()
-{
-#if 0 // Fails on WiFi because multi-byte read seems to be broken
-    uint8_t b[1];
-    int ret = read(b, 1);
-    if (ret == 1)
+    else if( ret == 0 )
     {
-        return b[0];
+      break;
     }
     else
     {
-        return -1;
+      if(!m_sock.is_connected())
+      {
+        ERR("Connection error (recv returned %d)", ret);
+        *pReadLen = readLen;
+        return HTTP_CONN;
+      }
+      else
+      {
+        break;      
+      }
     }
-#else
-    int ret = iClient->read();
-    if (ret >= 0)
+    
+    if(!m_sock.is_connected())
     {
-        if (endOfHeadersReached() && iContentLength > 0)
-	{
-            // We're outputting the body now and we've seen a Content-Length header
-            // So keep track of how many bytes are left
-            iBodyLengthConsumed++;
-	}
+      break;
     }
-    return ret;
-#endif
+  }
+  DBG("Read %d bytes", readLen);
+  *pReadLen = readLen;
+  return HTTP_OK;
 }
 
-int HttpClient::read(uint8_t *buf, size_t size)
+HTTPResult HTTPClient::send(char* buf, size_t len) //0 on success, err code on failure
 {
-    int ret =iClient->read(buf, size);
-    if (endOfHeadersReached() && iContentLength > 0)
-    {
-        // We're outputting the body now and we've seen a Content-Length header
-        // So keep track of how many bytes are left
-        if (ret >= 0)
-	{
-            iBodyLengthConsumed += ret;
-	}
-    }
-    return ret;
+  if(len == 0)
+  {
+    len = strlen(buf);
+  }
+  DBG("Trying to write %d bytes", len);
+  size_t writtenLen = 0;
+    
+  if(!m_sock.is_connected())
+  {
+    WARN("Connection was closed by server");
+    return HTTP_CLOSED; //Connection was closed by server 
+  }
+  
+  m_sock.set_blocking(false, m_timeout);
+  int ret = m_sock.send_all(buf, len);
+  if(ret > 0)
+  {
+    writtenLen += ret;
+  }
+  else if( ret == 0 )
+  {
+    WARN("Connection was closed by server");
+    return HTTP_CLOSED; //Connection was closed by server
+  }
+  else
+  {
+    ERR("Connection error (send returned %d)", ret);
+    return HTTP_CONN;
+  }
+  
+  DBG("Written %d bytes", writtenLen);
+  return HTTP_OK;
 }
 
-int HttpClient::readHeader()
+HTTPResult HTTPClient::parseURL(const char* url, char* scheme, size_t maxSchemeLen, char* host, size_t maxHostLen, uint16_t* port, char* path, size_t maxPathLen) //Parse URL
 {
-    char c = read();
+  char* schemePtr = (char*) url;
+  char* hostPtr = (char*) strstr(url, "://");
+  if(hostPtr == NULL)
+  {
+    WARN("Could not find host");
+    return HTTP_PARSE; //URL is invalid
+  }
 
-    if (endOfHeadersReached())
+  if( maxSchemeLen < hostPtr - schemePtr + 1 ) //including NULL-terminating char
+  {
+    WARN("Scheme str is too small (%d >= %d)", maxSchemeLen, hostPtr - schemePtr + 1);
+    return HTTP_PARSE;
+  }
+  memcpy(scheme, schemePtr, hostPtr - schemePtr);
+  scheme[hostPtr - schemePtr] = '\0';
+
+  hostPtr+=3;
+
+  size_t hostLen = 0;
+
+  char* portPtr = strchr(hostPtr, ':');
+  if( portPtr != NULL )
+  {
+    hostLen = portPtr - hostPtr;
+    portPtr++;
+    if( sscanf(portPtr, "%hu", port) != 1)
     {
-        // We've passed the headers, but rather than return an error, we'll just
-        // act as a slightly less efficient version of read()
-        return c;
+      WARN("Could not find port");
+      return HTTP_PARSE;
     }
+  }
+  else
+  {
+    *port=0;
+  }
+  char* pathPtr = strchr(hostPtr, '/');
+  if( hostLen == 0 )
+  {
+    hostLen = pathPtr - hostPtr;
+  }
 
-    // Whilst reading out the headers to whoever wants them, we'll keep an
-    // eye out for the "Content-Length" header
-    switch(iState)
-    {
-    case eStatusCodeRead:
-        // We're at the start of a line, or somewhere in the middle of reading
-        // the Content-Length prefix
-        if (*iContentLengthPtr == c)
-        {
-            // This character matches, just move along
-            iContentLengthPtr++;
-            if (*iContentLengthPtr == '\0')
-            {
-                // We've reached the end of the prefix
-                iState = eReadingContentLength;
-                // Just in case we get multiple Content-Length headers, this
-                // will ensure we just get the value of the last one
-                iContentLength = 0;
-            }
-        }
-        else if ((iContentLengthPtr == kContentLengthPrefix) && (c == '\r'))
-        {
-            // We've found a '\r' at the start of a line, so this is probably
-            // the end of the headers
-            iState = eLineStartingCRFound;
-        }
-        else
-        {
-            // This isn't the Content-Length header, skip to the end of the line
-            iState = eSkipToEndOfHeader;
-        }
-        break;
-    case eReadingContentLength:
-        if (isdigit(c))
-        {
-            iContentLength = iContentLength*10 + (c - '0');
-        }
-        else
-        {
-            // We've reached the end of the content length
-            // We could sanity check it here or double-check for "\r\n"
-            // rather than anything else, but let's be lenient
-            iState = eSkipToEndOfHeader;
-        }
-        break;
-    case eLineStartingCRFound:
-        if (c == '\n')
-        {
-            iState = eReadingBody;
-        }
-        break;
-    default:
-        // We're just waiting for the end of the line now
-        break;
-    };
+  if( maxHostLen < hostLen + 1 ) //including NULL-terminating char
+  {
+    WARN("Host str is too small (%d >= %d)", maxHostLen, hostLen + 1);
+    return HTTP_PARSE;
+  }
+  memcpy(host, hostPtr, hostLen);
+  host[hostLen] = '\0';
 
-    if ( (c == '\n') && !endOfHeadersReached() )
-    {
-        // We've got to the end of this line, start processing again
-        iState = eStatusCodeRead;
-        iContentLengthPtr = kContentLengthPrefix;
-    }
-    // And return the character read to whoever wants it
-    return c;
+  size_t pathLen;
+  char* fragmentPtr = strchr(hostPtr, '#');
+  if(fragmentPtr != NULL)
+  {
+    pathLen = fragmentPtr - pathPtr;
+  }
+  else
+  {
+    pathLen = strlen(pathPtr);
+  }
+
+  if( maxPathLen < pathLen + 1 ) //including NULL-terminating char
+  {
+    WARN("Path str is too small (%d >= %d)", maxPathLen, pathLen + 1);
+    return HTTP_PARSE;
+  }
+  memcpy(path, pathPtr, pathLen);
+  path[pathLen] = '\0';
+
+  return HTTP_OK;
 }
 
+void HTTPClient::createauth (const char *user, const char *pwd, char *buf, int len) {
+    char tmp[80];
+ 
+    strncpy(buf, "Authorization: Basic ", 21);//len);
+    snprintf(tmp, sizeof(tmp), "%s:%s", user, pwd);
+    base64enc(tmp, strlen(tmp), &buf[strlen(buf)], len - strlen(buf));
+}
 
-
+// Copyright (c) 2010 Donatien Garnier (donatiengar [at] gmail [dot] com)
+int HTTPClient::base64enc(const char *input, unsigned int length, char *output, int len) {
+  static const char base64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  unsigned int c, c1, c2, c3;
+ 
+  if (len < ((((length-1)/3)+1)<<2)) return -1;
+  for(unsigned int i = 0, j = 0; i<length; i+=3,j+=4) {
+    c1 = ((((unsigned char)*((unsigned char *)&input[i]))));
+    c2 = (length>i+1)?((((unsigned char)*((unsigned char *)&input[i+1])))):0;
+    c3 = (length>i+2)?((((unsigned char)*((unsigned char *)&input[i+2])))):0;
+ 
+    c = ((c1 & 0xFC) >> 2);
+    output[j+0] = base64[c];
+    c = ((c1 & 0x03) << 4) | ((c2 & 0xF0) >> 4);
+    output[j+1] = base64[c];
+    c = ((c2 & 0x0F) << 2) | ((c3 & 0xC0) >> 6);
+    output[j+2] = (length>i+1)?base64[c]:'=';
+    c = (c3 & 0x3F);
+    output[j+3] = (length>i+2)?base64[c]:'=';
+  }
+  output[(((length-1)/3)+1)<<2] = '\0';
+  return 0;
+}

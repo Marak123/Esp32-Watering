@@ -28,6 +28,7 @@ struct s_session
 
 struct s_AccountSchema
 {
+    // s_AccountSchema() : isAdmin(false) {}
     String username;
     String password;
     struct s_date dateCreate;
@@ -35,6 +36,8 @@ struct s_AccountSchema
     std::vector<struct s_session> session;
     int dayExp_mainSession;
     int dayExp_mobileSession;
+    bool isAdmin;
+    std::vector<struct s_session> adminSession;
 };
 
 struct s_pin
@@ -105,18 +108,20 @@ struct s_Var
 
 struct s_wifi
 {
-    char* SSID;
-    char* password;
-    char localIP[4];
-    char gateway[4];
-    char subnet[4];
+    String ssid;
+    String password;
+    IPAddress local_ip;
+    IPAddress gateway;
+    IPAddress subnet;
+    String hostname;
 };
 
 struct s_ftpServer
 {
-    char addrIP[];
-    char username[];
-    char password[];
+    char *ip_address;
+    char *username;
+    char *password;
+    uint16_t port;
 };
 
 #endif

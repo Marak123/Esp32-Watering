@@ -1,0 +1,247 @@
+@import url('https://fonts.googleapis.com/css2?family=Supermercado+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@500&display=swap');
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html{
+    height: 100%;
+}
+
+body{
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: #333;
+    background-color: #e8d8d8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Cpolygon fill='%23b0cc6c' points='957 450 539 900 1396 900'/%3E%3Cpolygon fill='%23a18eaa' points='957 450 872.9 900 1396 900'/%3E%3Cpolygon fill='%23b0ba68' points='-60 900 398 662 816 900'/%3E%3Cpolygon fill='%238f8e8f' points='337 900 398 662 816 900'/%3E%3Cpolygon fill='%23b0a964' points='1203 546 1552 900 876 900'/%3E%3Cpolygon fill='%237c8d75' points='1203 546 1552 900 1162 900'/%3E%3Cpolygon fill='%23af9760' points='641 695 886 900 367 900'/%3E%3Cpolygon fill='%23678c5a' points='587 900 641 695 886 900'/%3E%3Cpolygon fill='%23ad855c' points='1710 900 1401 632 1096 900'/%3E%3Cpolygon fill='%234e8a3f' points='1710 900 1401 632 1365 900'/%3E%3Cpolygon fill='%23aa7358' points='1210 900 971 687 725 900'/%3E%3Cpolygon fill='%232d881e' points='943 900 1210 900 971 687'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+    background-size: cover;
+}
+
+header#main{
+    width: 30%;
+    height: 60%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    z-index: 1;
+    flex-wrap: nowrap;
+    align-content: space-around;
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    -ms-border-radius: 20px;
+    -o-border-radius: 20px;
+    box-shadow: 0px 0px 20px 0px rgba(0,0,0,0.75);
+}
+
+header#main div#version{
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    height: 5%;
+}
+
+header#main div#version div{
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 30%;
+    height: 100%;
+}
+
+header#main div#version div:last-child{
+    width: 60%;
+}
+
+header#main div#version div:last-child h2{
+    flex: 1;
+}
+
+header#main div#version div:last-child select{
+    flex: 1.5;
+}
+
+header#main div#version p{
+    font-size: 20px !important;
+    font-weight: bold;
+}
+
+header#main div#version p, header#main div#version h2{
+    display: flex;
+    font-size: 15px;
+    font-family: 'Supermercado One', cursive;
+}
+
+header#main select#version_select{
+    width: 30%;
+    height: 100%;
+    text-align: center;
+    border-radius: 50px;
+    border: 1px solid black;
+    font-size: 16px;
+    font-family: 'Supermercado One', cursive;
+}
+
+header#main div#description{
+    width: 90%;
+    height: 60%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+}
+
+header#main div#description h2{
+    font-size: 20px;
+    font-family: 'Supermercado One', cursive;
+}
+
+header#main div#description error-p{
+    color: red;
+}
+
+header#main div#description p, header#main div#description error-p{
+    font-size: 15px;
+    font-family: 'Source Code Pro', monospace;
+    text-align: center;
+}
+
+header#main div#update_button_container{
+    width: 40%;
+    height: 10%;
+}
+
+header#main div#update_button_container button{
+    width: 100%;
+    height: 100%;
+    background-color: rgb(5, 199, 5);
+    border-radius: 50px;
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    -ms-border-radius: 50px;
+    -o-border-radius: 50px;
+    border: 3px solid rgb(0, 108, 0);
+    font-size: 25px;
+    font-family: 'Supermercado One', cursive;
+    box-shadow: 0px 0px 10px 2px rgb(0 0 0), inset 0px 0px 20px 2px rgb(0, 0, 0, 0.5);
+    text-shadow: 0px 0px 0px 10px rgb(4, 247, 0);
+}
+
+header#main div#update_button_container button:active{
+    transform: scale(0.95);
+    -webkit-transform: scale;
+    -moz-transform: scale;
+    -ms-transform: scale;
+    -o-transform: scale;
+}
+
+alert#info{
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    position: absolute;
+}
+
+alert#info div#bg-cover{
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 3;
+}
+
+alert#info info{
+    width: 30%;
+    height: 30%;
+    background-color: white;
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    -ms-border-radius: 20px;
+    -o-border-radius: 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+}
+
+alert#info info p{
+    width: 80%;
+    height: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Source Code Pro', monospace;
+    text-align: center;
+    font-size: 15px;
+    text-shadow: 0px 0px 10px 20px rgb(4, 247, 0);
+}
+
+alert#info info div{
+    width: 30%;
+    height: 15%;
+}
+
+alert#info info div button{
+    width: 100%;
+    height: 100%;
+    background-color: rgb(128, 144, 154);
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    -ms-border-radius: 20px;
+    -o-border-radius: 20px;
+    border: none;
+    box-shadow: 0px 0px 10px 2px rgb(0 0 0), inset 0px 0px 20px 2px rgb(0, 0, 0, 0.5);
+    text-shadow: 0px 0px 0px 10px rgb(4, 247, 0);
+    font-size: 20px;
+    font-family: 'Source Code Pro', monospace;
+    color: white;
+}
+
+alert#info info div button:active{
+    transform: scale(0.95);
+    -webkit-transform: scale;
+    -moz-transform: scale;
+    -ms-transform: scale;
+    -o-transform: scale;
+}
+
+alert #yes-no-choice{
+    display: flex;
+    width: 100% !important;
+    justify-content: space-around;
+}
+
+alert #yes-no-choice button{
+    width: 30% !important;
+}
+
+alert #yes-no-choice button:first-child{
+    background-color: rgb(5, 199, 5);
+}
+
+alert #yes-no-choice button:last-child{
+    background-color: red;
+}

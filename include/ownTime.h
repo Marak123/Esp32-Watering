@@ -92,6 +92,15 @@ namespace ownTime
           strftime(timeYear, 6, "%Y", &timeinfo);
           return atoi(timeYear);
         }
+        s_date Today(){
+          return s_date{
+            Day(),
+            Month(),
+            Year(),
+            Hour(),
+            Minute(),
+          };
+        }
     };
 
   ownTime TimeS;
@@ -173,21 +182,19 @@ namespace ownTime
   //Porownywanie daty ze struktury DATE
   bool compareDate(s_date tokenData)
   {
-    struct s_date today = {
-        TimeS.Day(),
-        TimeS.Month(),
-        TimeS.Year(),
-        TimeS.Hour(),
-        TimeS.Minute()
-    };
-    if(tokenData.year == today.year)
-      if(tokenData.month > today.month) return true;
-      else if(tokenData.month == today.month)
-        if(tokenData.day > today.day) return true;
-        else return false;
-      else return false;
-    else if(tokenData.year < today.year) return false;
-    else if(tokenData.year > today.year) return true;
+    if(tokenData.year == TimeS.Year()){
+      if(tokenData.month > TimeS.Month()) return true;
+      else if(tokenData.month == TimeS.Month()){
+        if(tokenData.day > TimeS.Day()) return true;
+        else if(tokenData.day == TimeS.Day()){
+          if(tokenData.hours > TimeS.Hour()) return true;
+          else if(tokenData.hours == TimeS.Hour()){
+            if(tokenData.minute > TimeS.Minute()) return true;
+          }
+        }
+      }
+    }
+    else if(tokenData.year > TimeS.Year()) return true;
     return false;
   };
 
