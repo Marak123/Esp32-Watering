@@ -1,1 +1,1 @@
-{"type": "library", "name": "ESPAsyncWebServer-esphome", "version": "1.2.7", "spec": {"owner": "ottowinter", "id": 6758, "name": "ESPAsyncWebServer-esphome", "requirements": null, "url": null}}
+{"type": "library", "name": "ESPAsyncWebServer-esphome", "version": "2.1.0", "spec": {"owner": "ottowinter", "id": 6758, "name": "ESPAsyncWebServer-esphome", "requirements": null, "url": null}}

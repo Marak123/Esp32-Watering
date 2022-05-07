@@ -1,31 +1,15 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
-#include <WiFi.h>
 #include <vector>
-// #include <ESP32_FTPClient.h>
-#include <DHT.h>
 
-#include <ownUpdate.h>
+
 #include <WebServer.h>
 #include <ownTime.h>
-#include <struct.h>
 #include <configFile.h>
-#include <function.h>
 #include <mainFun.h>
-
-//Dolaczanie zmiennych
+#include <dataConn.h>
 #include <variables.h>
-// FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);
-
-//Inicjacja Klasy Połączenia FTP
-// if(dataFtp.port != 0) {FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);}
-// else {FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password);}
-FTP ftp(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);
-//Wywołanie klasy WebSocket
-WebServer webserver(&varPins, &ftp);
-
-// confFile config("/configFile.json");
 
 
 void setup()
@@ -33,54 +17,35 @@ void setup()
   Serial.begin(115200);
   Serial.println("\n\n");
 
-  //Inicjacja odczytu danych z pliku
+  // Inicjacja SD_CARD
+  initSD();
+
+  // Inicjacja spiffs
   initSPIFFS();
 
-  config config;
-  config.begin();
-  config.loadConfig();
-  config.saveConfig();
+  // Load config file
+  configFile.load_configuration();
+  Serial.println("Config file loaded");
 
-  //Ładowanie danych konfiguracyjnych z pliku json
-  // config.loadConfig();
-  // TimeS.getTime();
+  //Inicjacja polaczenia z siecia WiFi
   initWiFi();
 
-  // int h = TimeS.Hour();
-  // int m = TimeS.Minute();
-  // Serial.print(h);
-  // Serial.print(":");
-  // Serial.print(m);
-
-  //Łączenie z serwerem ftp
-  //ftp.Connect(true);
-
-  //Inicjacja WebSocket
-  webserver.initWebSocket();
-
-  //Inicjacja Serwera
-  webserver.ServerInit();
-
-
-  //Tworzenie konta domyślnego użytkownika strony
-  // Accounts.push_back(createAccount("admin", "admin"));
-
-
-
-
-  int usedBytes = SPIFFS.usedBytes();
-  int totalBytes = SPIFFS.totalBytes();
-  int result = usedBytes * 100 / totalBytes;
-  Serial.print("SPIFFS used: ");
-  Serial.print(result);
-  Serial.println("%");
-
+  Serial.println(configFile.spiffsSize());
+  rpLog.log(configFile.spiffsSize());
 
   //Inicjacja pinow
   initialPins(varPins.pins, varPins.powerPins);
+  rpLog.log("Piny zostaly zainicjowane");
 
   //Inicjacja sensora temperatury
   initTempSensor();
+  rpLog.log("Sensory temperatury zostaly zainicjowane");
+
+  // Wlaczanie serwera WWW
+  web_serv.runServer();
+  rpLog.log("Serwer WWW zostal uruchomiony");
+
+  // updateSoft.checkUpdate();
 }
 
 bool CntMain = false;
@@ -107,7 +72,7 @@ void loop()
 
     StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet = inLoopActionPerform();
     if (jsonRet["what"] == "action-done")
-      webserver.notifyClients(jsonRet);
+      web_serv.notifyClients(jsonRet);
   }
   if ((millis() - StartTemp) >= 10000)
   {
@@ -130,7 +95,8 @@ void loop()
       tmPin["curlTemp"] = varPins.tempData[i].curlTemp;
       jsonTemp["data"].add(tmPin);
     }
-    // serializeJson(jsonTemp, Serial);
-    webserver.notifyClients(jsonTemp);
+    web_serv.notifyClients(jsonTemp);
   }
+
+  // if(TimeS.Hour() == 12) updateSoft.checkUpdate();
 }

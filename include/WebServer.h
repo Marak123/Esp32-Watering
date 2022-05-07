@@ -1,13 +1,17 @@
 #ifndef WEBSOCKET
 #define WEBSOCKET
+#pragma once
 
 #include <ArduinoJson.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
+#include "struct.h"
+#include "variables.h"
 #include "ownTime.h"
 #include "function.h"
-#include "struct.h"
+#include "ownUpdate.h"
+#include "configFile.h"
 
 class WebServer
 {
@@ -15,15 +19,9 @@ private:
   AsyncWebServer server;
   AsyncWebSocket ws;
 
-  s_Var *variableAddress;
-  FTP *ftp;
-
 public:
-  WebServer(struct s_Var *vars, FTP *ft) : server(80), ws("/ws")
-  {
-    variableAddress = vars;
-    ftp = ft;
-  };
+  WebServer() : server(80), ws("/ws") {};
+  ~WebServer() {};
 
   void notifyClients(StaticJsonDocument<JSON_OBJECT_SIZE(20)> json)
   {
@@ -51,15 +49,18 @@ public:
     {
     case WS_EVT_CONNECT:
       Serial.printf("Klient o ip \"%s\" polaczyl sie z WebSocket i nadano mu id #%u\n", client->remoteIP().toString().c_str(), client->id());
+      rpLog.log("Klient o ip " + client->remoteIP().toString() + " polaczyl sie z WebSocket i nadano mu id #" + String(client->id()));
       break;
     case WS_EVT_DISCONNECT:
       Serial.printf("Klient WebSocket o id #%u zakonczyl polaczenie.\n", client->id());
+      rpLog.log("Klient WebSocket o id #" + String(client->id()) + " zakonczyl polaczenie.");
       break;
     case WS_EVT_DATA:
       handleWebSocketMessage(arg, data, len);
       break;
     case WS_EVT_PONG:
       Serial.printf("PING: Uzytkownik o ip \"%s\" pingoje WebSocket\n", client->remoteIP().toString().c_str());
+      rpLog.log("PING: Uzytkownik o ip " + client->remoteIP().toString() + " pingoje WebSocket");
       break;
     case WS_EVT_ERROR:
       break;
@@ -100,7 +101,7 @@ public:
   }
 
   //Inicjacja Serwera
-  void ServerInit()
+  void initServer()
   {
     //Glowna Strona
     server.on("/", [this](AsyncWebServerRequest *request) {
@@ -120,9 +121,10 @@ public:
 
         for(int i=0; i < Accounts.size(); i++)
           for(int j=0; j < Accounts[i].session.size(); j++)
-            if(Accounts[i].session[j].token == espToken)
+            if(Accounts[i].session[j].token == espToken){
               Accounts[i].session.erase(Accounts[i].session.begin() + j);
-
+              rpLog.user_info(Accounts[i].username, "Wylogowano uzytkownika", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+            }
         return;
       }
 
@@ -142,6 +144,7 @@ public:
             Accounts[i].session.push_back(tkNew);
             response->addHeader("Set-Cookie", "ESPSESSIONID=" + tkNew.token);
             request->send(response);
+            configFile.save_accounts();
             return;
           }
       request->send(SPIFFS, "/login/index.html", String(), false, [this](const String &var) -> String { return this->processor(var, "/", ""); });
@@ -171,7 +174,7 @@ public:
         "/power", HTTP_POST, [this](AsyncWebServerRequest *request)
         {
           if(!authenticationAccount(request, {"token", "what", "pinID", "action"}, {"power-now"})){
-            request->send(401, "FAILED");
+            request->send(401, "plain/text", "FAILED");
             return;
           }
 
@@ -186,14 +189,22 @@ public:
           jsonRet["action"] = request->arg("action");
           jsonRet["what"] = request->arg("what");
           notifyClients(jsonRet);
-          request->send(200, "SUCCESS");
+
+        String user = "Nieznay";
+        for(int i=0; i < Accounts.size(); i++)
+          for(int j=0; j < Accounts[i].session.size(); j++)
+            if(Accounts[i].session[j].token == request->arg("token"))
+              user = Accounts[i].username;
+
+          rpLog.user_info(user, "Zmiana stanu pinu \"" + request->arg("pinID") + "\" akcja \"" + request->arg("action") + "\"", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+          request->send(200, "plain/text", "SUCCESS");
         });
 
         server.on(
         "/delay", HTTP_POST, [this](AsyncWebServerRequest *request)
         {
           if(!authenticationAccount(request, {"token", "what", "pinID", "action", "delay"}, {"delay"})){
-            request->send(401, "FAILED");
+            request->send(401, "plain/text", "FAILED");
             return;
           }
 
@@ -218,8 +229,16 @@ public:
           jsonRet["what"] = request->arg("what");
           jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
 
+          String user = "Nieznay";
+          for(int i=0; i < Accounts.size(); i++)
+            for(int j=0; j < Accounts[i].session.size(); j++)
+              if(Accounts[i].session[j].token == request->arg("token"))
+                user = Accounts[i].username;
+
+          configFile.save_action();
           notifyClients(jsonRet);
-          request->send(200, "SUCCESS");
+          rpLog.user_info(user, "Zaplanowanie akcji \"" + request->arg("action") + "\" na pinie \"" + request->arg("pinID") + "\" z opoznieniem " + request->arg("delay"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+          request->send(200, "plain/text", "SUCCESS");
         });
 
         server.on(
@@ -227,7 +246,7 @@ public:
         {
 
           if(!authenticationAccount(request, {"token", "what", "pinID", "action", "hours", "dayWeek", "date"}, {"planDate", "planWeek"})){
-            request->send(401, "FAILED");
+            request->send(401, "plain/text", "FAILED");
             return;
           }
 
@@ -271,17 +290,31 @@ public:
           jsonRet["what"] = request->arg("what");
           jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
 
+          String user = "Nieznany";
+          for(int i=0; i < Accounts.size(); i++)
+            for(int j=0; j < Accounts[i].session.size(); j++)
+              if(Accounts[i].session[j].token == request->arg("token"))
+                user = Accounts[i].username;
+
+          configFile.save_action();
           notifyClients(jsonRet);
-          request->send(200, "SUCCESS");
+          rpLog.user_info(user, "Zaplanowanie akcji \"" + request->arg("action") + "\" na pinie \"" + request->arg("pinID") + "\" na dni " + request->arg("dayWeek") + " o godzinie " + request->arg("hours"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+          request->send(200, "plain/text", "SUCCESS");
         });
 
         server.on(
             "/setTemperature", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "pinID", "temperature"}, {"setTemperature"})){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
+
+              String user = "Nieznany";
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token"))
+                    user = Accounts[i].username;
 
               int idPin = -1;
               for(int l=0; l < varPins.pins.size(); l++)
@@ -301,16 +334,23 @@ public:
               jsonRet["tempElem"] = arrCreator::temperatureEle(true);
 
               notifyClients(jsonRet);
-              request->send(200, "SUCCESS");
+              rpLog.user_info(user, "Ustawienie utrzymywanej temperatury na pinie \"" + request->arg("pinID") + "\" na " + request->arg("temperature"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
             "/timetableRemove", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "indexElm", "action", "pinID", "data", "hours"}, {"timetable"})){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
+
+              String user = "Nieznany";
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token"))
+                    user = Accounts[i].username;
 
               int point = 0;
               for(int i=0; i < varPins.actionList.size(); i++){
@@ -335,104 +375,118 @@ public:
               jsonRet["actionEle"] = arrCreator::listActionElm(true);
 
               notifyClients(jsonRet);
-              request->send(200, "SUCCESS");
+              rpLog.user_info(user, "Usunięcie akcji \"" + request->arg("action") + "\" na pinie \"" + request->arg("pinID") + "\" na dni " + request->arg("data") + " o godzinie " + request->arg("hours"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
             "/changeUsername", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "newUsername", "password"}, {"changeUsername"})){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
                   if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     if(Accounts[i].password == request->arg("password"))
                       Accounts[i].username = request->arg("newUsername");
                     else error++;
                   }
 
               if(error != 0){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
-
-              request->send(200, "SUCCESS");
+              configFile.save_accounts();
+              rpLog.user_info(user, "Zmiana nazwy użytkownika na \"" + request->arg("newUsername") + "\"", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
             "/changePassword", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "newPassword", "oldPassword"}, {"changePassword"})){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
                   if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     if(Accounts[i].password == request->arg("oldPassword"))
                       Accounts[i].password = request->arg("newPassword");
                     else error++;
                   }
 
               if(error != 0){
-                request->send(401, "FAILED");
+                request->send(401, "plain/text", "FAILED");
                 return;
               }
 
-              request->send(200, "SUCCESS");
+              configFile.save_accounts();
+              rpLog.user_info(user, "Zmiana hasła", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
             "/validitySession", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "exp_day"}, {"validitySession"})){
-                request->send(401, "Blad pobierania danych, Brak dostepu.");
+                request->send(401, "plain/text", "Blad pobierania danych, Brak dostepu.");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
-                  if(Accounts[i].session[j].token == request->arg("token"))
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     Accounts[i].dayExp_mainSession = request->arg("exp_day").toInt();
-                  else error++;
+                  }else error++;
 
               if(error != 0){
-                request->send(405, "Blad pobierania danych, Sesja wygasla.");
+                request->send(405, "plain/text", "Blad pobierania danych, Sesja wygasla.");
                 return;
               }
-              request->send(200, "SUCCESS");
+              rpLog.user_info(user, "Zmiana dni wygasniecia sesji", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
             "/getMobileToken", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what"}, {"getMobileToken"})){
-                request->send(401, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
+                request->send(401, "application/json", "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
+                Serial.println("getMobileToken FAILED");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               String mbtoken = "";
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
                   if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     if(ownTime::compareDate(Accounts[i].mobileToken.expDate))
                       mbtoken = Accounts[i].mobileToken.token;
                     else error++;
                   }
-
               if(error != 0){
-                request->send(405, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Sesja wygasla.\"}");
+                request->send(405, "application/json", "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Sesja wygasla.\"}");
                 return;
               }
 
+              rpLog.user_info(user, "Pobranie tokenu mobilnego", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
               String result = "{\"act\": \"SUCCESS\", \"result\": \"" + mbtoken + "\"}";
               request->send(200, "plain/text", result);
             });
@@ -441,15 +495,17 @@ public:
             "/generateNewMobileToken", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what"}, {"generateNewMobileToken"})){
-                request->send(401, "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
+                request->send(401, "application/json", "{\"act\": \"FAILED\", \"result\": \"Blad pobierania danych, Brak dostepu.\"}");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               String mbtoken = "";
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
                   if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     if(ownTime::compareDate(Accounts[i].mobileToken.expDate)){
                       Accounts[i].mobileToken = generateWebToken(Accounts[i].dayExp_mobileSession);
                       mbtoken = Accounts[i].mobileToken.token;
@@ -461,7 +517,9 @@ public:
                 return;
               }
 
+              configFile.save_accounts();
               String result = "{\"act\": \"SUCCESS\", \"result\": \"" + mbtoken + "\"}";
+              rpLog.user_info(user, "Generowanie nowego tokena mobilnego", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
               request->send(200, "plain/text", result);
             });
 
@@ -469,87 +527,151 @@ public:
             "/mobileValiditySession", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "exp_day"}, {"mobileValiditySession"})){
-                request->send(401, "Blad pobierania danych, Brak dostepu.");
+                request->send(401, "plain/text", "Blad pobierania danych, Brak dostepu.");
                 return;
               }
 
+              String user = "Nieznany";
               int error = 0;
               for(int i=0; i < Accounts.size(); i++)
                 for(int j=0; j < Accounts[i].session.size(); j++)
-                  if(Accounts[i].session[j].token == request->arg("token"))
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    user = Accounts[i].username;
                     Accounts[i].dayExp_mobileSession = request->arg("exp_day").toInt();
+                  }
                   else error++;
 
               if(error != 0){
-                request->send(405, "Blad pobierania danych, Sesja wygasla.");
+                request->send(405, "plain/text", "Blad pobierania danych, Sesja wygasla.");
                 return;
               }
-              request->send(200, "SUCCESS");
+              rpLog.user_info(user, "Zmiana dni wygasniecia sesji mobilnej", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
             });
 
         server.on(
-            "/updatesoftware/check", HTTP_POST, [this](AsyncWebServerRequest *request)
+            "/restart", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
-              if(!authenticationAccount(request, {"token", "what"}, {"checkUpdate"})){
-                request->send(401, "Blad pobierania danych, Brak dostepu.");
+              if(!authenticationAccount(request, {"token", "what", "password"}, {"restart"})){
+                request->send(401, "plain/text", "Blad pobierania danych, Brak dostepu.");
                 return;
               }
 
-              request->send(200, "plain/text", updateSoft.checkUpdate());
-            });
-
-        server.on(
-            "/update", HTTP_GET, [this](AsyncWebServerRequest *request)
-            {
-
-              if(is_authentified(request, true)){
-                request->send(SPIFFS, "/update/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
-                return;
-              }
-
-              request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
-            });
-
-        server.on(
-            "/update", HTTP_POST, [this](AsyncWebServerRequest *request)
-            {
-              String msg = "";
-              if (request->hasParam("username", true) && request->hasParam("password", true)){
-                for (int i = 0; i < Accounts.size(); i++)
-                  if (request->arg("username") == String(Accounts[i].username) && request->arg("password") == String(Accounts[i].password))
-                  {
-                    if(!Accounts[i].isAdmin) break;
-                    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/update/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
-                    response->addHeader("Cache-Control", "no-cache");
-
-                    struct s_session tkNew = generateWebToken(0, 0, 5);
-                    Accounts[i].adminSession.push_back(tkNew);
-                    response->addHeader("Set-Cookie", "ESPSESSIONUPDATEID=" + tkNew.token);
-                    request->send(response);
-                    return;
+              String user = "Nieznay";
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(Accounts[i].password == request->arg("password")){
+                      configFile.save_complete_config();
+                    }
                   }
-                msg = "Błędne dane logowania.";
+                  else error++;
+
+              if(error != 0){
+                request->send(405, "plain/text", "Blad pobierania danych, Sesja wygasla.");
+                return;
               }
-
-              request->send(SPIFFS, "/login/index.html", "text/html", false, [this, msg](const String &var) -> String { return this->processor(var, "/update", msg); });
+              rpLog.user_info(user, "Restart Urządzenia", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
+              ESP.restart();
             });
-
         server.on(
-            "/update/make_update", HTTP_POST, [this](AsyncWebServerRequest *request)
+            "/factoryreset", HTTP_POST, [this](AsyncWebServerRequest *request)
             {
-              if(!authenticationAccount(request, {"token", "what", "version"}, {"updateSoftware_adm"})){
-                request->send(401, "Wystąpił błąd, Brak dostepu.");
+              if(!authenticationAccount(request, {"token", "what", "password"}, {"factoryreset"})){
+                request->send(401, "plain/text", "Blad pobierania danych, Brak dostepu.");
                 return;
               }
 
-              request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+              String user = "Nieznay";
+              int error = 0;
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token")){
+                    if(Accounts[i].password == request->arg("password")){
+                      configFile.factoryResetConfig();
+                    }
+                  }
+                  else error++;
+
+              if(error != 0){
+                request->send(405, "plain/text", "Blad pobierania danych, Sesja wygasla.");
+                return;
+              }
+              rpLog.user_info(user, "Przywrocenie konfiguracji fabrycznej i reset urządzenia", request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
+              ESP.restart();
             });
+
+        // server.on(
+        //     "/updatesoftware/check", HTTP_POST, [this](AsyncWebServerRequest *request)
+        //     {
+        //       if(!authenticationAccount(request, {"token", "what"}, {"checkUpdate"})){
+        //         request->send(401, "Blad pobierania danych, Brak dostepu.");
+        //         return;
+        //       }
+
+        //       request->send(200, "plain/text", updateSoft.checkUpdate());
+        //     });
+
+        // server.on(
+        //     "/update", HTTP_GET, [this](AsyncWebServerRequest *request)
+        //     {
+
+        //       if(is_authentified(request, true)){
+        //         request->send(SPIFFS, "/update/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+        //         return;
+        //       }
+
+        //       request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+        //     });
+
+        // server.on(
+        //     "/update", HTTP_POST, [this](AsyncWebServerRequest *request)
+        //     {
+        //       String msg = "";
+        //       if (request->hasParam("username", true) && request->hasParam("password", true)){
+        //         for (int i = 0; i < Accounts.size(); i++)
+        //           if (request->arg("username") == String(Accounts[i].username) && request->arg("password") == String(Accounts[i].password))
+        //           {
+        //             if(!Accounts[i].isAdmin) break;
+        //             AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/update/index.html", String(), false, [this](const String &var) -> String { return this->processor(var); });
+        //             response->addHeader("Cache-Control", "no-cache");
+
+        //             struct s_session tkNew = generateWebToken(0, 0, 5);
+        //             Accounts[i].adminSession.push_back(tkNew);
+        //             response->addHeader("Set-Cookie", "ESPSESSIONUPDATEID=" + tkNew.token);
+        //             request->send(response);
+        //             return;
+        //           }
+        //         msg = "Błędne dane logowania.";
+        //       }
+
+        //       request->send(SPIFFS, "/login/index.html", "text/html", false, [this, msg](const String &var) -> String { return this->processor(var, "/update", msg); });
+        //     });
+
+        // server.on(
+        //     "/update/make_update", HTTP_POST, [this](AsyncWebServerRequest *request)
+        //     {
+        //       if(!authenticationAccount(request, {"token", "what", "version"}, {"updateSoftware_adm"})){
+        //         request->send(401, "Wystąpił błąd, Brak dostepu.");
+        //         return;
+        //       }
+
+        //       request->send(SPIFFS, "/login/index.html", "text/html", false, [this](const String &var) -> String { return this->processor(var, "/update", ""); });
+        //     });
 
         server.onNotFound([](AsyncWebServerRequest *request)
                           { request->send(SPIFFS, "/notFound/index.html", "text/html"); });
 
         server.begin();
   }
-};
+
+  void runServer(){
+    this->initWebSocket();
+    this->initServer();
+  }
+} web_serv;
 
 #endif

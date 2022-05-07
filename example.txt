@@ -1,0 +1,10 @@
+_HEADER[Host]: 192.168.1.9
+_HEADER[Connection]: keep-alive
+_HEADER[Cache-Control]: max-age=0
+_HEADER[DNT]: 1
+_HEADER[Upgrade-Insecure-Requests]: 1
+_HEADER[User-Agent]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36 Edg/100.0.1185.29
+_HEADER[Accept]: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+_HEADER[Accept-Encoding]: gzip, deflate
+_HEADER[Accept-Language]: pl,en;q=0.9,en-GB;q=0.8,en-US;q=0.7
+_HEADER[Cookie]: theme=light; ESPSESSIONID=w@Y@JpWkBV6mydtwG54NIsjPd2TR2RKMqx24GuyuSIaJtcZRhUTw&lZk1tp8

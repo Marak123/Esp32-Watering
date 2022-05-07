@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"wificlient.h": "c",
+			"update.h": "c",
+			"functional": "cpp",
+			"array": "cpp",
+			"deque": "cpp",
+			"string": "cpp",
+			"vector": "cpp",
+			"string_view": "cpp",
+			"unordered_map": "cpp"
+		}
+	}
+}

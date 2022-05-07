@@ -1,6 +1,7 @@
 {
+    "FIRST_RUN": true,
     "WIFI": {
-        "SSID": "SAGEM_1A85",
+        "SSID": "OtakaNazwa",
         "PASSWORD": "63D34E7A",
         "HOSTNAME": "ESP32_Nawadnianie"
     },
@@ -14,28 +15,25 @@
             [17, "Pin 17", false],
             [18, "Pin 18", false],
             [19, "Pin 19", false],
-            [20, "Pin 20", false],
             [21, "Pin 21", false],
             [22, "Pin 22", false],
             [23, "Pin 23", false],
-            [25, "Pin 25", false],
-            [26, "Pin 26", false],
-            [27, "Pin 27", false]
+            [25, "Pin 25", false]
         ],
         "TEMP_PINS": [
-            [34, "Pin 34"],
+            [4, "Pin 4"],
             [35, "Pin 35"]
         ],
         "AIR_PINS": [
-            [32, "Pin 32", 34],
+            [32, "Pin 32", 4],
             [33, "Pin 33", 35]
         ],
         "HEAT_PINS": [
-            [26, "Pin 26", 34],
+            [26, "Pin 26", 4],
             [27, "Pin 27", 35]
         ],
         "TEMP_DATA": [
-            [34, 22.5],
+            [4, 22.5],
             [35, 24.8]
         ]
     },
@@ -56,5 +54,36 @@
             "PASSWORD": "user",
             "RIGHTS": "USER"
         }
-    ]
+    ],
+    "ACTIONS": {
+        "WEEK_LISTS": [
+            {
+                "WEEK_DAY": [0, 1, 2, 3, 4, 5, 6],
+                "TIME": [
+                    {
+                        "HOUR": 8,
+                        "MINUTE": 0,
+                        "SECOND": 0
+                    }
+                ],
+                "ACTION": true,
+                "NR_PIN": 12,
+                "WEEK_COUNT": 1
+            }
+        ],
+        "LISTS": [
+            {
+                "TIME": {
+                    "DAY": 15,
+                    "MONTH": 1,
+                    "YEAR": 2020,
+                    "HOUR": 12,
+                    "MINUTE": 0,
+                    "SECOND": 0
+                },
+                "ACTION": true,
+                "NR_PIN": 12
+            }
+        ]
+    }
 }

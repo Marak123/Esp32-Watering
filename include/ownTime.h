@@ -1,7 +1,10 @@
 #ifndef TIME_H
 #define TIME_H
+#pragma once
 
 #include <time.h>
+#include <Arduino.h>
+
 #include "struct.h"
 
 namespace ownTime
@@ -18,11 +21,24 @@ namespace ownTime
 
         void getTime()
         {
-            if (!getLocalTime(&timeinfo))
-            {
-                Serial.println("Błąd pobierania czasu.");
-                return;
-            }
+            int cnt = 0;
+            pinMode(2, OUTPUT);
+            if(WiFi.status() == WL_CONNECTED)
+              while (!getLocalTime(&timeinfo))
+              {
+                  cnt++;
+                  Serial.println("Błąd pobierania czasu.");
+                  digitalWrite(2, HIGH);
+                  delay(500);
+                  digitalWrite(2, LOW);
+                  delay(500);
+                  if(cnt > 10)
+                  {
+                      Serial.println("Nie udało się pobrać czasu. Resetowanie płytki...");
+                      ESP.restart();
+                  }
+                  return;
+              }
         }
 
         int Hour()
@@ -109,16 +125,20 @@ namespace ownTime
   const int Month_31[7] = {1, 3, 5, 7, 8, 10, 12};
   const String Month_Word[12] = {"Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"};
 
+  //Sprawdzanie przestepnosci
+  bool leapYear(int year)
+  {
+    if (year % 4 != 0) return false;
+    if (year % 100 != 0) return false;
+    if (year % 400 != 0) return false;
+    return true;
+  }
+
   //Sprawdzanie ilosci dni w miesiacu
   int dayINmonth(s_date date){
     if(date.month == 2){
       //Sprawdzanie przestepnosci
-      if(date.year % 4 == 0)
-        if(date.year % 100 == 0)
-          if(date.year % 400 == 0) return 29;
-          else return 28;
-        else return 29;
-      else return 28;
+      return leapYear(date.year) ? 29 : 28;
     };
     for (int i = 0; i < sizeof(Month_30) / sizeof(Month_30[0]); i++)
       if (date.month == Month_30[i]) return 30;
@@ -130,12 +150,7 @@ namespace ownTime
   {
     if(month == 2){
       //Sprawdzanie przestepnosci
-      if(year % 4 == 0)
-        if(year % 100 == 0)
-          if(year % 400 == 0) return 29;
-          else return 28;
-        else return 29;
-      else return 28;
+      return leapYear(year) ? 29 : 28;
     };
     for (int i = 0; i < sizeof(Month_30) / sizeof(Month_30[0]); i++)
       if (month == Month_30[i]) return 30;
@@ -160,6 +175,7 @@ namespace ownTime
     if (kt) if (day == 31) return true;
     return false;
   }
+
 
   //Walidator daty
   bool validDate(s_date date)
@@ -323,35 +339,33 @@ namespace ownTime
     };
   }
 
-  s_date addHours(String date)
-  {
-    ownTime tm;
-    tm.getTime();
-    s_hour hr = convertHours(date);
-    int day = tm.Day();
-    int month = tm.Month();
-    int year = tm.Year();
-    int hours = tm.Hour();
-    int minute = tm.Minute();
-    hours += hr.hour;
-    minute += hr.minute;
+  s_date stDates(s_date stDate){
+    int day = TimeS.Day() - stDate.day;
+    int month = TimeS.Month() - stDate.month;
+    int year = TimeS.Year() - stDate.year;
+    int hours = TimeS.Hour() - stDate.hours;
+    int minute = TimeS.Minute() - stDate.minute;
+    int second = TimeS.Second() - stDate.second;
 
-    if(minute > 59){
-      minute -= 60;
-      hours += 1;
+    while(second < 0){
+      second += 59;
+      minute -= 1;
     }
-    if(hours > 23){
-      hours -= 24;
-      day += 1;
+    while(minute < 0){
+      minute += 59;
+      hours -= 1;
     }
-    if (day > dayINmonth(month, year))
-    {
-      day -= dayINmonth(month, year);
-      month += 1;
+    while(hours < 0){
+      hours += 23;
+      day -= 1;
     }
-    if(month > 12){
-      month = 1;
-      year += 1;
+    while(day < 1){
+      day += dayINmonth(month, year);
+      month -= 1;
+      if(month < 1){
+        month = 12;
+        year -= 1;
+      }
     }
     return s_date{
       day,
@@ -360,6 +374,52 @@ namespace ownTime
       hours,
       minute
     };
+  }
+
+  s_date addHours(String date)
+  {
+    s_hour h = convertHours(date);
+    int day = TimeS.Day();
+    int month = TimeS.Month();
+    int year = TimeS.Year();
+    int hours = TimeS.Hour();
+    int minute = TimeS.Minute();
+    int second = TimeS.Second();
+    hours += h.hour;
+    minute += h.minute;
+    second += h.second;
+
+    while(second > 59){
+      second -= 59;
+      minute += 1;
+    }
+    while(minute > 59){
+      minute -= 59;
+      hours += 1;
+    }
+    while(hours > 23){
+      hours -= 23;
+      day += 1;
+    }
+    while(day > dayINmonth(month, year)){
+      day -= dayINmonth(month, year);
+      month += 1;
+      if(month > 12){
+        month = 1;
+        year += 1;
+      }
+    }
+    return s_date{
+      day,
+      month,
+      year,
+      hours,
+      minute
+    };
+  }
+
+  s_date getDate(unsigned long millis){
+    return stDates({0, 0, 0, 0, 0, (int)millis/1000});
   }
 
 };

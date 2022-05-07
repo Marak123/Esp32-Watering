@@ -367,9 +367,9 @@
     border-radius: 50%;
     border: 3px solid transparent;
     border-top-color: #c1c1c1;
-    -webkit-animation: spin 2s linear infinite;
-    animation: spin 2s linear infinite;
-    z-index: 16000
+    -webkit-animation: spin-loader 2s linear infinite;
+    animation: spin-loader 2s linear infinite;
+    z-index: 16000;
 }
 
 #loader:before {
@@ -382,8 +382,8 @@
     border-radius: 50%;
     border: 3px solid transparent;
     border-top-color: #a5a5a5;
-    -webkit-animation: spin 3s linear infinite;
-    animation: spin 3s linear infinite
+    -webkit-animation: spin-loader 3s linear infinite;
+    animation: spin-loader 3s linear infinite;
 }
 
 #loader:after {
@@ -396,11 +396,11 @@
     border-radius: 50%;
     border: 3px solid transparent;
     border-top-color: #505050;
-    -webkit-animation: spin 1.5s linear infinite;
-    animation: spin 1.5s linear infinite
+    -webkit-animation: spin-loader 1.5s linear infinite;
+    animation: spin-loader 1.5s linear infinite;
 }
 
-@-webkit-keyframes spin {
+@-webkit-keyframes spin-loader {
     0% {
         -webkit-transform: rotate(0);
         -ms-transform: rotate(0);
@@ -414,7 +414,7 @@
     }
 }
 
-@keyframes spin {
+@keyframes spin-loader {
     0% {
         -webkit-transform: rotate(0);
         -ms-transform: rotate(0);
@@ -3385,7 +3385,7 @@ label.switch input.checkbox {
     }
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Rowdies:wght@700&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Rowdies:wght@700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@800&display=swap');
 
 *{
@@ -3632,4 +3632,56 @@ popup#update-bar button#show-update-detail:active{
     -moz-transform: scale(0.8);
     -ms-transform: scale(0.8);
     -o-transform: scale(0.8);
+} */
+
+
+.restart .resetuj-divice{
+    display:flex;
+    justify-content: space-around;
+    align-items:center;
+    flex-direction: column;
+    height: 40%;
+}
+
+.restart .resetuj-divice input{
+    border: none !important;
+    box-shadow: none !important;
+}
+
+#restart-btn{
+    width: 300px;
+    height: 50px;
+}
+#restart-btn:active{
+    transform: scale(0.8);
+    -webkit-transform: scale(0.8);
+    -moz-transform: scale(0.8);
+    -ms-transform: scale(0.8);
+    -o-transform: scale(0.8);
+}
+
+#reset-btn{
+    width: 400px;
+    height: 50px;
+    background: red;
+}
+
+#reset-btn:active:not(:disabled){
+    transform: scale(0.8);
+}
+
+#reset-btn:disabled{
+    background-color: rgb(114 0 52);
+    cursor: not-allowed;
+}
+
+#rest-pass{
+    width: 250px;
+    height: 40px;
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    -ms-border-radius: 20px;
+    -o-border-radius: 20px;
+    margin: 0 auto;
 }

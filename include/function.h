@@ -1,14 +1,17 @@
 #ifndef FUNCTION
 #define FUNCTION
+#pragma once
 
 #include <SPIFFS.h>
 #include <time.h>
 #include <Arduino.h>
-#include <ESP32_FTPClient.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
+#include "struct.h"
 #include "ownTime.h"
 #include "variables.h"
-#include "struct.h"
+#include "ownUpdate.h"
 
 void deepSleep(String message = "", int second = 60)
 {
@@ -79,7 +82,7 @@ namespace arrCreator{
   }
 
   String versionArray(){
-    return "const info_desc = [" + updateSoft.getVersion() + "];";
+    return "const info_desc = " + updateSoft.getVersion() + ";";
   }
 
 
@@ -135,117 +138,59 @@ int inArray(std::vector<std::vector<String>> array, String find)
   return -1;
 }
 
-///Inicjacja WiFi
-void initWiFi(String ssid=dataWifi.ssid, String password=dataWifi.password, String hostname="ESP32-platform-watering",IPAddress local_ip=dataWifi.local_ip, IPAddress gateway=dataWifi.gateway, IPAddress subnet=dataWifi.subnet)
-{
-  if(WiFi.status() == WL_CONNECTED) return;
-
-  Serial.println("SSID: " + ssid + "\nPassword: " + password);
-
-  WiFi.begin((const char*)ssid.c_str(), (const char*)password.c_str());
-  if(local_ip != IPAddress(0,0,0,0) && gateway != IPAddress(0,0,0,0) && subnet != IPAddress(0,0,0,0)) WiFi.config(local_ip, gateway, subnet);
-  WiFi.hostname((const char*)hostname.c_str());
-
-  int timeout_counter = 0;
-  Serial.print("Connecting to WiFi..");
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    delay(1000);
-    timeout_counter++;
-    if(timeout_counter >= 5) ESP.restart();
-  }
-
-  Serial.print("Connected to the WiFi network. \nWith IP: " + WiFi.localIP().toString() + "\nGateway: " + WiFi.gatewayIP().toString() + "\nSubnet: " + WiFi.subnetMask().toString() + "\nHostname: " + String(WiFi.getHostname()) + "\n\n");
-}
-
-///Inicjacja odczytu z plikow
-void initSPIFFS()
-{
-  if (!SPIFFS.begin(true, "/data", 100))
-  {
-    Serial.println("SPIFFS Mount Failed");
-    return;
-  }
-}
-
-//Zapis plikow na serwer FTP
-class FTP
-{
-  ESP32_FTPClient ftp;
-
-public:
-  FTP(char *ftp_server, char *ftp_user, char *ftp_password, uint8_t port) : ftp(ftp_server, port, ftp_user, ftp_password, 5000, 2) {}
-  FTP(char *ftp_server, char *ftp_user, char *ftp_password) : ftp(ftp_server, ftp_user, ftp_password, 5000, 2) {}
-
-  bool Connect(bool message = false)
-  {
-    ftp.OpenConnection();
-
-    for (int i = 0; i < 15; i++)
-    {
-      if (ftp.isConnected())
-        return true;
-      delay(1000);
-    }
-    if (message)
-      Serial.println("Nie można otworzyć połączenia z serwerem FTP.");
-
-    return false;
-  }
-
-  bool writeFile(String FileName, String message)
-  {
-    char FN[FileName.length()];
-    char MS[message.length()];
-
-    FileName.toCharArray(FN, FileName.length());
-    message.toCharArray(MS, message.length());
-
-    if (!ftp.isConnected())
-    {
-      Serial.println("Połączenie z serwerem FTP nie jest otwarte.");
-      return false;
-    }
-    try
-    {
-      ftp.InitFile("Type A");
-      ftp.AppendFile(FN);
-      ftp.Write(MS);
-      ftp.CloseFile();
-      return true;
-    }
-    catch (String error)
-    {
-      Serial.print("Wystąpił problem: ");
-      Serial.println(error);
-      return false;
-    }
-  }
-};
-
 //Generowanie tokenu użytkownika
-struct s_session generateWebToken(int exp_day=30, int exp_hour=0, int exp_min=0)
+struct s_session generateWebToken(int exp_day=30, int exp_hour=0, int exp_min=0, String version="session", std::vector<std::vector<s_AccountSchema>> whereFind = {Accounts})
 {
-  srand(time(NULL));
-  String wordToken = "1234567890poiuytrewqasdfghjklmnbvcxz!@#$%&?LPOIUYTREWQASDFGHJKMNBVCXZ";
+  String smallLeter = "abcdefghijklmnopqrstuvwxyz";
+  String bigLeter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  String number = "0123456789";
+  String special = "!@#$%&?";
+  String wordToken = smallLeter + bigLeter + number + special;
   String token = "";
-  int wordLength = wordToken.length();
+  const int wordLength = wordToken.length();
 
-  int randomNumber = 0;
-  const int maxNb = rand() % 40 + 40;
-  for (int i = 0; i < maxNb; i++)
-  {
-    randomNumber = rand() % wordLength;
-    token += wordToken[randomNumber];
+  bool isUnique = false;
+  while(!isUnique){
+    token = "";
+    srand(time(NULL));
+    int randomNumber = 0;
+    const int maxNb = rand() % 40 + 40;
+    for (int i = 0; i < maxNb; i++)
+    {
+      randomNumber = rand() % wordLength;
+      token += wordToken[randomNumber];
+    }
+    for(std::vector<s_AccountSchema> as : whereFind){
+      bool isIt = false;
+      if(version == "session")
+        for(struct s_AccountSchema ac : as){
+          for(struct s_session ss : ac.session){
+            if(ss.token == token){
+              isIt = true;
+              break;
+            }
+          }
+          if(isIt) break;
+        }
+      else if(version == "mobile")
+        for(struct s_AccountSchema ac : as){
+          if(ac.mobileToken.token == token){
+            isIt = true;
+            break;
+          }
+        }
+      else return s_session();
+      if(isIt) {
+        isUnique = false;
+        break;
+      }
+      else isUnique = true;
+    }
   }
-
   struct s_session tkNew{
     ownTime::addDates({exp_day, 0, 0, exp_hour, exp_min}),
     token
   };
-
   return tkNew;
 }
 
@@ -258,38 +203,7 @@ struct s_AccountSchema createAccount(String username, String password, bool isAd
       return {};
     }
 
-  struct s_AccountSchema defaultAccount{
-    username,
-    password,
-    {
-      TimeS.Day(),
-      TimeS.Month(),
-      TimeS.Year(),
-      TimeS.Hour(),
-      TimeS.Minute()
-    },
-    {},
-    {},
-    30,
-    365,
-    isAdmin,
-    {}
-  };
-  // defaultAccount.username = username;
-  // defaultAccount.password = password;
-  // defaultAccount.dateCreate = {
-  //   TimeS.Day(),
-  //   TimeS.Month(),
-  //   TimeS.Year(),
-  //   TimeS.Hour(),
-  //   TimeS.Minute()
-  // };
-  // defaultAccount.mobileToken = generateWebToken(365);
-  // defaultAccount.session.push_back(generateWebToken(30));
-  // defaultAccount.dayExp_mainSession = 30;
-  // defaultAccount.dayExp_mobileSession = 365;
-
-
+  struct s_AccountSchema defaultAccount{username, password, { TimeS.Day(), TimeS.Month(), TimeS.Year(), TimeS.Hour(), TimeS.Minute() }, {}, {}, 30, 365, isAdmin, {} };
   return defaultAccount;
 }
 
@@ -338,5 +252,75 @@ char *ToChar(String str)
   return cstr;
 }
 
+bool validAction(struct s_actionList obj){
+  const int yea = obj.time.year;
+  const int mon = obj.time.month;
+  const int day = obj.time.day;
+  const int hou = obj.time.hours;
+  const int min = obj.time.minute;
+  const int nYea = TimeS.Year();
+  const int nMon = TimeS.Month();
+  const int nDay = TimeS.Day();
+  const int nHou = TimeS.Hour();
+  const int nMin = TimeS.Minute();
+  if(yea > nYea) return true;
+  else if(yea < nYea) return false;
+
+  if(mon > nMon) return true;
+  else if(mon < nMon) return false;
+
+  if(day > nDay) return true;
+  else if(day < nDay) return false;
+
+  if(hou > nHou) return true;
+  else if(hou < nHou) return false;
+
+  if(min > nMin) return true;
+  else if(min < nMin) return false;
+
+  int good = 0;
+  for(int p : output_pin)
+    if(obj.nrPin == p) {
+      good = 1;
+      break;
+    }
+  if(!good) return false;
+
+  if(obj.action != true && obj.action != false) return false;
+
+  digitalWrite(obj.nrPin, obj.action);
+
+  return false;
+}
+
+bool validAction(struct s_actionWeek obj){
+  if(obj.arrayWeek.size() == 0 || obj.arrayWeek.size() > 7) return false;
+  for(int i : obj.arrayWeek)
+    if(i < 0 || i > 6) return false;
+
+  if((obj.time.hour > 23 && obj.time.hour < 0) && (obj.time.minute > 59 && obj.time.minute < 0) && (obj.time.second > 59 && obj.time.second < 0)) return false;
+  int good = 0;
+  for(int p : output_pin)
+    if(obj.nrPin == p) {
+      good = 1;
+      break;
+    }
+  if(!good) return false;
+  if(obj.action != true && obj.action != false) return false;
+
+  return true;
+}
+
+String getFromRequest(AsyncWebServerRequest *request, String whatGet){
+    int headers = request->headers();
+    int i;
+    for(i=0;i<headers;i++){
+      AsyncWebHeader* h = request->getHeader(i);
+      if(String(h->name().c_str()) == whatGet)
+        // Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
+        return h->value().c_str();
+    }
+    return "";
+}
 
 #endif

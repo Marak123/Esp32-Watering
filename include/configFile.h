@@ -1,458 +1,363 @@
 #ifndef CONFFILE_H
 #define CONFFILE_H
+#pragma once
 
 #include <SPIFFS.h>
+#include <SD.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
-#include <function.h>
+#include <Arduino.h>
 
-IPAddress splitIPaddress(char in[16]){
-    String oct[4];
-    int dots = 0;
-    for(int i=0; i < 16; i++)
-        if(dots > 3) break;
-        else if(in[i] >= '0' && in[i] <= '9'){
-            if(dots == 0) oct[0] += in[i];
-            else if(dots == 1) oct[1] += in[i];
-            else if(dots == 2) oct[2] += in[i];
-            else if(dots == 3) oct[3] += in[i];
-        }
-        else if(in[i] == '.') dots++;
-    IPAddress ip(oct[0].toInt(), oct[1].toInt(), oct[2].toInt(), oct[3].toInt());
-    return ip;
-}
+#include "logS.h"
+#include "struct.h"
+#include "dataConn.h"
 
-void printAllData(){
-        //Print all data with dataWifi struct
-        Serial.print("Wifi config: { ");
-        Serial.print("SSID: ");
-        Serial.print(dataWifi.ssid);
-        Serial.print("; PASS: ");
-        Serial.print(dataWifi.password);
-        Serial.print("; IP: ");
-        Serial.print(dataWifi.local_ip.toString());
-        Serial.print("; GATEWAY: ");
-        Serial.print(dataWifi.gateway.toString());
-        Serial.print("; SUBNET: ");
-        Serial.print(dataWifi.subnet.toString());
-        Serial.println(" }");
+bool _expireAction = false;
 
-
-        //Print FTP_SERVER config with structure
-        Serial.print("FTP_SERVER config: { ");
-        Serial.print("IP_ADDRESS: ");
-        Serial.print(dataFtp.ip_address);
-        Serial.print("; PORT: ");
-        Serial.print(dataFtp.port);
-        Serial.print("; USERNAME: ");
-        Serial.print(dataFtp.username);
-        Serial.print("; PASSWORD: ");
-        Serial.print(dataFtp.password);
-        Serial.println(" }");
-
-        //Print all data with account struct
-        Serial.println("Account config: { ");
-        for(s_AccountSchema account : Accounts){
-            Serial.print("      [ USERNAME: ");
-            Serial.print(account.username);
-            Serial.print("; PASSWORD: ");
-            Serial.print(account.password);
-            Serial.println("; ]");
-        }
-        Serial.println(" }");
-
-        //Print all data with varPins.pins structure
-        Serial.println("PINS config: {");
-        for(s_pin pin : varPins.pins){
-            Serial.print("      { PIN_NR: ");
-            Serial.print(pin.nrPin);
-            Serial.print("; PIN_ACTION: ");
-            Serial.print(pin.actionPin);
-            Serial.print("; PIN_NAME: ");
-            Serial.print(pin.namePin);
-            Serial.print("; PIN_ID: ");
-            Serial.print(pin.idPin);
-            Serial.println("; }");
-        }
-        Serial.println("}");
-
-        //Print all data with varPins.powerPins structure
-        Serial.println("POWER_PINS config: {");
-        for(s_powerPin powerPin : varPins.powerPins){
-            Serial.print("      { PIN_ID: ");
-            Serial.print(powerPin.idPin);
-            Serial.print("; PIN_STATUS: ");
-            Serial.print(powerPin.power);
-            Serial.print("; POWER_ID: ");
-            Serial.print(powerPin.idPower);
-            Serial.println("; }");
-        }
-        Serial.println("}");
-
-        //Print all data with varPins.tempPins structure
-        Serial.println("TEMP_PINS config: {");
-        for(s_tempPin tempPin : varPins.tempPins){
-            Serial.print("      { TEMP_NR: ");
-            Serial.print(tempPin.nrPinTemp);
-            Serial.print("; TEMP_ID: ");
-            Serial.print(tempPin.idPinTemp);
-            Serial.print("; AIR_NR: ");
-            Serial.print(tempPin.nrPinAir);
-            Serial.print("; AIR_ID: ");
-            Serial.print(tempPin.idPinAir);
-            Serial.print("; HEAT_NR: ");
-            Serial.print(tempPin.nrPinHeat);
-            Serial.print("; HEAT_ID: ");
-            Serial.print(tempPin.idPinHeat);
-            Serial.print("; ID_TEMPERATURE: ");
-            Serial.print(tempPin.idTemp);
-            Serial.println("; }");
-        }
-        Serial.println("}");
-
-        //Print all data with varPins.tempData structure
-        Serial.println("TEMP_DATA config: {");
-        for(s_tempData tempData : varPins.tempData){
-            Serial.print("      { TEMPERATURE_DATA_ID: ");
-            Serial.print(tempData.idTemp);
-            Serial.print("; TEMP_ID: ");
-            Serial.print(tempData.idPinTemp);
-            Serial.print("; HEAT_ID: ");
-            Serial.print(tempData.idPinHeat);
-            Serial.print("; HEAT_POWER: ");
-            Serial.print(tempData.powerHeat);
-            Serial.print("; AIR_ID: ");
-            Serial.print(tempData.idPinAir);
-            Serial.print("; AIR_POWER: ");
-            Serial.print(tempData.powerAir);
-            Serial.print("; PRIM_TEMP: ");
-            Serial.print(tempData.primTemp);
-            Serial.print("; CURL_TEMP: ");
-            Serial.print(tempData.curlTemp);
-            Serial.println("; }");
-        }
-        Serial.println("}");
-
-        //Print all data with varPins.actionList structure
-        Serial.println("ACTION_LIST: {");
-        for(s_actionList actionList : varPins.actionList){
-            Serial.print("      { TIME: ");
-            Serial.print(actionList.time.day);
-            Serial.print(".");
-            Serial.print(actionList.time.month);
-            Serial.print(".");
-            Serial.print(actionList.time.year);
-            Serial.print(" ");
-            Serial.print(actionList.time.hours);
-            Serial.print(":");
-            Serial.print(actionList.time.minute);
-            Serial.print("; ACTION: ");
-            Serial.print(actionList.action);
-            Serial.print("; ID_PIN: ");
-            Serial.print(actionList.idPin);
-            Serial.print("; NR_PIN: ");
-            Serial.print(actionList.nrPin);
-            Serial.println("; }");
-        }
-        Serial.println("}");
-
-        //Print all data with varPins.actionWeek structure
-        Serial.println("ACTION_WEEK: {");
-        for(s_actionWeek actionWeek : varPins.actionWeek){
-            Serial.print("      { ARRAY_WEEK: [");
-            for(int i : actionWeek.arrayWeek){
-                Serial.print(i);
-                Serial.print(", ");
-            }
-            Serial.print("]; TIME: ");
-            Serial.print(actionWeek.time.hour);
-            Serial.print(":");
-            Serial.print(actionWeek.time.minute);
-            Serial.print("; ACTION: ");
-            Serial.print(actionWeek.action);
-            Serial.print("; ID_PIN: ");
-            Serial.print(actionWeek.idPin);
-            Serial.print("; NR_PIN: ");
-            Serial.print(actionWeek.nrPin);
-            Serial.print("; WEEK_COUNT: ");
-            Serial.print(actionWeek.weekCount);
-            Serial.println("; }");
-        }
-        Serial.println("}\n\n\n");
-}
-
-class config
+///Inicjacja WiFi
+void initWiFi(String ssid=dataWifi.ssid, String password=dataWifi.password, String hostname="ESP32-platform-watering",IPAddress local_ip=dataWifi.local_ip, IPAddress gateway=dataWifi.gateway, IPAddress subnet=dataWifi.subnet)
 {
-    private:
-    String configFilePath = "/configFile.json";
-    File configFile;
-    StaticJsonDocument<JSON_OBJECT_SIZE(200)> configObject;
-    public:
-    config(){};
-    ~config(){};
-    bool begin(String filePath="/configFile.json"){
+    if(WiFi.status() == WL_CONNECTED) return;
+
+    Serial.println("SSID: " + ssid + "\nPassword: " + password);
+
+    WiFi.begin((const char*)ssid.c_str(), (const char*)password.c_str());
+    if(local_ip != IPAddress(0,0,0,0) && gateway != IPAddress(0,0,0,0) && subnet != IPAddress(0,0,0,0)) WiFi.config(local_ip, gateway, subnet);
+    WiFi.hostname((const char*)hostname.c_str());
+
+    int timeout_counter = 0;
+    Serial.print("Connecting to WiFi..");
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.print(".");
+        delay(1000);
+        timeout_counter++;
+        if(timeout_counter >= 5) ESP.restart();
+    }
+
+    Serial.print("Connected to the WiFi network. \nWith IP: " + WiFi.localIP().toString() + "\nGateway: " + WiFi.gatewayIP().toString() + "\nSubnet: " + WiFi.subnetMask().toString() + "\nHostname: " + String(WiFi.getHostname()) + "\n\n");
+    rpLog.unloadBuffer();
+    rpLog.log("Connected to the WiFi network. With IP: " + WiFi.localIP().toString() + " Gateway: " + WiFi.gatewayIP().toString() + " Subnet: " + WiFi.subnetMask().toString() + " Hostname: " + String(WiFi.getHostname()) );
+}
+
+IPAddress splitIPaddress(String str){
+    int indF = str.indexOf('.'),
+        indS = str.indexOf('.', indF+1),
+        indT = str.indexOf('.', indS+1),
+        indFo = str.indexOf('.', indT+1);
+
+    return (str.substring(0, indF).toInt(), str.substring(indF+1, indS).toInt(), str.substring(indS+1, indT).toInt(), str.substring(indT+1, indFo).toInt());
+}
+
+namespace load{
+    void wifi(JsonObject object){
+        s_wifi wifi;
         try{
-            configFilePath = filePath;
-            configFile = SPIFFS.open(configFilePath);
 
-            if(!configFile){
-                Serial.println("Error with open config file");
-                return false;
-            }
+            if(!object.containsKey("SSID") && !object.containsKey("PASSWORD")) return;
+            wifi.ssid = object["SSID"].as<String>();
+            wifi.password = object["PASSWORD"].as<String>();
 
-            String configFileContent = "";
-            while(configFile.available()) configFileContent += char(configFile.read());
-            deserializeJson(configObject, configFileContent);
+            if(!object.containsKey("LOCAL_IP") && !object.containsKey("GATEWAY") && !object.containsKey("SUBNET") && !object.containsKey("HOSTNAME")) return;
 
-            // Serial.print("Object size: ");
-            // Serial.println(measureJson(configObject));
+            if(object["LOCAL_IP"].size() >= 7)
+                wifi.local_ip.fromString(object["LOCAL_IP"].as<String>());
+            if(object["GATEWAY"].size() >= 7)
+                wifi.gateway.fromString(object["GATEWAY"].as<String>());
+            if(object["SUBNET"].size() >= 7)
+                wifi.subnet.fromString(object["SUBNET"].as<String>());
+            if(object["HOSTNAME"].size() > 0)
+                wifi.hostname = object["HOSTNAME"].as<String>();
 
-            // Serial.println("Config file JSON Fresh: ");
-            // serializeJsonPretty(configObject, Serial);
-            // Serial.println("\n\n");
+            dataWifi = wifi;
+            initWiFi();
         }catch(...){
-            Serial.println("Error with read config file");
-            return false;
+            // error
         }
+
+    }
+    void ftp(JsonObject object){
+        struct s_ftpServer ftp;
         try{
-            configFile.close();
+            if(!object.containsKey("IP_ADDRESS") || !object.containsKey("USERNAME") || !object.containsKey("PASSWORD")) return;
+
+            dataFtp.ip_address = ToChar(object["IP_ADDRESS"].as<String>());
+            dataFtp.username = ToChar(object["USERNAME"].as<String>());
+            dataFtp.password = ToChar(object["PASSWORD"].as<String>());
+
+            if(object.containsKey("PORT"))
+                dataFtp.port = object["PORT"].as<uint16_t>();
+
+            dataFtp = ftp;
+            ftpClient.initConnection(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port);
         }catch(...){
-            return false;
+            // error
         }
-        return true;
-    };
-    bool loadConfig(){
-        // Serial.println("Old config:");
-        // printAllData();
-        // Serial.println("\n\n");
+    }
+
+    void powerPins(JsonArray object){
+        std::vector<struct s_pin> pins;
+        std::vector<struct s_powerPin> powerPins;
         try{
-            if(configObject.containsKey("WIFI")){
-                if(configObject["WIFI"].containsKey("SSID"))
-                    dataWifi.ssid = configObject["WIFI"]["SSID"].as<const char*>();
-                if(configObject["WIFI"].containsKey("PASSWORD"))
-                    dataWifi.password = configObject["WIFI"]["PASSWORD"].as<const char*>();
-                if(configObject["WIFI"].containsKey("LOCAL_IP"))
-                    if(sizeof(configObject["WIFI"]["LOCAL_IP"]) > 0){
-                        char ipChar[16];
-                        configObject["WIFI"]["LOCAL_IP"].as<String>().toCharArray(ipChar, 16);
-                        dataWifi.local_ip = splitIPaddress(ipChar);
-                    }
-                if(configObject["WIFI"].containsKey("GATEWAY"))
-                    if(sizeof(configObject["WIFI"]["GATEWAY"]) > 4){
-                        char ipChar[16];
-                        configObject["WIFI"]["GATEWAY"].as<String>().toCharArray(ipChar, 16);
-                        dataWifi.gateway = splitIPaddress(ipChar);
-                    }
-                if(configObject["WIFI"].containsKey("SUBNET"))
-                    if(sizeof(configObject["WIFI"]["SUBNET"]) > 4){
-                        char ipChar[16];
-                        configObject["WIFI"]["SUBNET"].as<String>().toCharArray(ipChar, 16);
-                        dataWifi.subnet = splitIPaddress(ipChar);
-                    }
-                if(configObject["WIFI"].containsKey("HOSTNAME"))
-                    if(sizeof(configObject["WIFI"]["HOSTNAME"]) > 0){
-                        dataWifi.hostname = configObject["WIFI"]["HOSTNAME"].as<String>();
-                    }
+            for(JsonVariant i : object){
+                bool _continue = true;
+                if(i.size() < 2) continue;
+                for(int p : output_pin) if(i[0].as<int>() == p){ _continue = false; break; }
+                for(struct s_pin p : varPins.pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                for(struct s_pin p : pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                if(i[1].as<String>().length() < 0 || _continue) continue;
 
-                initWiFi();
-            }
-            if(configObject.containsKey("FTP_SERVER")){
-                if(configObject["FTP_SERVER"].containsKey("IP_ADDRESS"))
-                    dataFtp.ip_address = ToChar(configObject["FTP_SERVER"]["IP_ADDRESS"].as<String>());
-                if(configObject["FTP_SERVER"].containsKey("PORT"))
-                    dataFtp.port = configObject["FTP_SERVER"]["PORT"].as<uint16_t>();
-                if(configObject["FTP_SERVER"].containsKey("USERNAME"))
-                    dataFtp.username = ToChar(configObject["FTP_SERVER"]["USERNAME"].as<String>());
-                if(configObject["FTP_SERVER"].containsKey("PASSWORD"))
-                    dataFtp.password = ToChar(configObject["FTP_SERVER"]["PASSWORD"].as<String>());
+                int idPin = varPins.pins.size() + pins.size();
+                pins.push_back({i[0].as<int>(), (i.size() > 1 ? i[1].as<String>() : "Pin "+i[0].as<String>()), "power",  idPin});
+                powerPins.push_back({idPin, (i.size() > 2 ? i[2].as<bool>() : false), static_cast<int>(varPins.powerPins.size() + powerPins.size())});
             }
 
-            if(configObject.containsKey("PINS")){
-                if(configObject["PINS"].containsKey("POWER_PINS")){
-                    JsonArray power_pins = configObject["PINS"]["POWER_PINS"];
-                    for(JsonVariant i : power_pins){
-                        if(i.size() != 3) continue;
-                        if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0 && (i[2].as<int>() == 0 || i[2].as<int>() == 1))) continue;
-                        s_pin pin = {i[0].as<int>(), i[1].as<String>(), "power",  static_cast<int>(varPins.pins.size())};
-                        s_powerPin powerPin = {static_cast<int>(varPins.pins.size()), i[2].as<int>(), static_cast<int>(varPins.powerPins.size())};
-                        varPins.pins.push_back(pin);
-                        varPins.powerPins.push_back(powerPin);
+            varPins.pins.insert(varPins.pins.end(), pins.begin(), pins.end());
+            varPins.powerPins.insert(varPins.powerPins.end(), powerPins.begin(), powerPins.end());
+        }catch (...) {
+            // error
+        }
+    }
+
+    void tempPins(JsonArray object){
+        std::vector<struct s_pin> pins;
+        std::vector<struct s_tempPin> tempPins;
+        try{
+            for(JsonVariant i : object){
+                bool _continue = true;
+                if(i.size() != 2) continue;
+                for(int p : input_pin) if(i[0].as<int>() == p){ _continue = false; break; }
+                for(struct s_pin p : varPins.pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                for(struct s_pin p : pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0) || _continue) continue;
+
+                pins.push_back({i[0].as<int>(), i[1].as<String>(), "temperature", static_cast<int>(varPins.pins.size() + pins.size())});
+                tempPins.push_back({i[0].as<int>(), static_cast<int>(varPins.pins.size() + tempPins.size())});
+            }
+
+            varPins.pins.insert(varPins.pins.end(), pins.begin(), pins.end());
+            varPins.tempPins.insert(varPins.tempPins.end(), tempPins.begin(), tempPins.end());
+        }catch (...) {
+            // error
+        }
+    }
+
+    void airPins(JsonArray object){
+        std::vector<struct s_pin> pins;
+        try{
+            for(JsonVariant i : object){
+                bool _continue = false;
+                if(i.size() != 3) continue;
+                for(struct s_pin p : varPins.pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                for(struct s_pin p : pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0 && i[2].as<int>() >= 0) || _continue) continue;
+
+                int idPin = varPins.pins.size() + pins.size();
+                for(int l=0; l < varPins.tempPins.size(); l++)
+                    if(varPins.tempPins[l].nrPinTemp == i[2].as<int>()){
+                        varPins.tempPins[l].nrPinAir = i[0].as<int>();
+                        varPins.tempPins[l].idPinAir = idPin;
                     }
+                pins.push_back({i[0].as<int>(), (i.size() > 1 ? i[1].as<String>() : "Pin "+i[0].as<String>()), "air",  idPin});
+            }
+
+            varPins.pins.insert(varPins.pins.end(), pins.begin(), pins.end());
+        }catch (...) {
+            // error
+        }
+    }
+
+    void heatPins(JsonArray object){
+        std::vector<struct s_pin> pins;
+        try{
+            for(JsonVariant i : object){
+                bool _continue = false;
+                if(i.size() != 3) continue;
+                for(struct s_pin p : varPins.pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                for(struct s_pin p : pins) if(i[0].as<int>() == p.nrPin){ _continue = true; break; }
+                if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0 && i[2].as<int>() >= 0) || _continue) continue;
+
+                int idPin = varPins.pins.size() + pins.size();
+                for(int l=0; l < varPins.tempPins.size(); l++)
+                    if(varPins.tempPins[l].nrPinTemp == i[2].as<int>()){
+                        varPins.tempPins[l].nrPinHeat = i[0].as<int>();
+                        varPins.tempPins[l].idPinHeat = varPins.pins.size();
+                    }
+                pins.push_back({i[0].as<int>(), (i.size() > 1 ? i[1].as<String>() : "Pin "+i[0].as<String>()), "heat",  idPin});
+            }
+
+            varPins.pins.insert(varPins.pins.end(), pins.begin(), pins.end());
+        }catch (...) {
+            // error
+        }
+    }
+
+    void tempData(JsonArray object){
+        std::vector<s_tempData> tempData;
+        try{
+            for(JsonVariant i : object){
+                if(i.size() != 2) continue;
+                if(!(i[0].as<int>() >= 0 && i[1].as<int>() >= 0)) continue;
+
+                DHT initTer(i[0].as<int>(), DHT11);
+                initTer.begin();
+
+                s_tempData data = {static_cast<int>(varPins.tempData.size() + tempData.size()), 0, 0, false, 0, false, 0.0, i[1].as<float>(), initTer};
+
+                for(s_pin iPin : varPins.pins)
+                    if(iPin.nrPin == i[0].as<int>() && iPin.actionPin == "temperature")
+                        data.idPinTemp = iPin.idPin;
+                for(s_tempPin iTempPin : varPins.tempPins)
+                    if(iTempPin.nrPinTemp == i[0].as<int>()){
+                        data.idPinHeat = iTempPin.idPinHeat;
+                        data.idPinAir = iTempPin.idPinAir;
+                    }
+
+                tempData.push_back(data);
+            }
+
+            varPins.tempData.insert(varPins.tempData.end(), tempData.begin(), tempData.end());
+        }catch (...) {
+            // error
+        }
+    }
+
+    void accounts(JsonArray object){
+        std::vector<s_AccountSchema> accounts;
+        try{
+            for(JsonVariant i : object){
+                if(i.size() < 2) continue;
+                if(!i.containsKey("USERNAME") && !i.containsKey("PASSWORD")) continue;
+
+                s_AccountSchema account;
+
+                if(!i["USERNAME"].isNull() && !i["PASSWORD"].isNull()){
+                    account.username = i["USERNAME"].as<String>();
+                    account.password = i["PASSWORD"].as<String>();
+                }
+                bool _exist = false;
+                for(s_AccountSchema iA : accounts) if(iA.username == account.username) _exist = true;
+                if(_exist) continue;
+
+                if(!i.containsKey("DATA_CREATE") || i["DATA_CREATE"].isNull()) account.dateCreate = ownTime::addDates({});
+                else account.dateCreate = {i["DATA_CREATE"]["DAY"].as<int>(), i["DATA_CREATE"]["MONTH"].as<int>(), i["DATA_CREATE"]["YEAR"].as<int>(), i["DATA_CREATE"]["HOUR"].as<int>(), i["DATA_CREATE"]["MINUTE"].as<int>()};
+
+                if(i.containsKey("EXP_MAINSESSION")) account.dayExp_mainSession = i["EXP_MAIN_SESSION"].as<int>();
+                else account.dayExp_mainSession = 30;
+                if(i.containsKey("EXP_MOBILESESSION")) account.dayExp_mobileSession = i["EXP_MOBILE_SESSION"].as<int>();
+                else account.dayExp_mobileSession = 365;
+
+                if(i.containsKey("MOBILE_TOKEN")){
+                    if(!i["MOBILE_TOKEN"].isNull() || i["MOBILE_TOKEN"].containsKey("TOKEN") || !i["MOBILE_TOKEN"]["TOKEN"].isNull()){
+                        account.mobileToken.token = i["MOBILE_TOKEN"]["TOKEN"].as<String>();
+                        if(i["MOBILE_TOKEN"].containsKey("EXP_DATE")) account.mobileToken.expDate = {i["MOBILE_TOKEN"]["EXP_DATE"]["DAY"].as<int>(), i["MOBILE_TOKEN"]["EXP_DATE"]["MONTH"].as<int>(), i["MOBILE_TOKEN"]["EXP_DATE"]["YEAR"].as<int>(), i["MOBILE_TOKEN"]["EXP_DATE"]["HOUR"].as<int>(), i["MOBILE_TOKEN"]["EXP_DATE"]["MINUTE"].as<int>()};
+                        else account.mobileToken.expDate = ownTime::addDates({i.containsKey("DAY_EXP_MOBILE_TOKEN") ? i["DAY_EXP_MOBILE_TOKEN"].as<int>() : 365});
+                    }
+                }else{
+                    account.mobileToken = generateWebToken(account.dayExp_mobileSession, 0, 0, "mobile", {accounts, Accounts});
                 }
 
-                if(configObject["PINS"].containsKey("TEMP_PINS")){
-                    JsonArray temp_pins = configObject["PINS"]["TEMP_PINS"];
-                    for(JsonVariant i : temp_pins){
-                        if(i.size() != 2) continue;
-                        if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0)) continue;
-                        s_pin pin = {i[0].as<int>(), i[1].as<String>(), "temperature", static_cast<int>(varPins.pins.size())};
-                        s_tempPin tempPin = {i[0].as<int>(), static_cast<int>(varPins.pins.size())};
-                        varPins.pins.push_back(pin);
-                        varPins.tempPins.push_back(tempPin);
-                    }
+                if(i.containsKey("SESSION")){
+                    JsonArray sess = i["SESSION"];
+                    if(sess.size() > 0){
+                        for(JsonVariant ses : sess){
+                            if(ses.size() == 0 || !ses.containsKey("TOKEN") || ses["TOKEN"].isNull()) continue;
 
-                    if(configObject["PINS"].containsKey("AIR_PINS")){
-                        JsonArray air_pins = configObject["PINS"]["AIR_PINS"];
-                        for(JsonVariant i : air_pins){
-                            if(i.size() != 3) continue;
-                            if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0 && i[2].as<int>() >= 0)) continue;
-                            s_pin pin = {i[0].as<int>(), i[1].as<String>(), "air", static_cast<int>(varPins.pins.size())};
-                            for(int l=0; l < varPins.tempPins.size(); l++)
-                                if(varPins.tempPins[l].nrPinTemp == i[2].as<int>()){
-                                    varPins.tempPins[l].nrPinAir = i[0].as<int>();
-                                    varPins.tempPins[l].idPinAir = varPins.pins.size();
-                                }
-                            varPins.pins.push_back(pin);
-                        }
-                    }
-
-                    if(configObject["PINS"].containsKey("HEAT_PINS")){
-                        JsonArray heat_pins = configObject["PINS"]["HEAT_PINS"];
-                        for(JsonVariant i : heat_pins){
-                            if(i.size() != 3) continue;
-                            if(!(i[0].as<int>() >= 0 && i[1].as<String>().length() > 0 && i[2].as<int>() >= 0)) continue;
-                            s_pin pin = {i[0].as<int>(), i[1].as<String>(), "heat", static_cast<int>(varPins.pins.size())};
-                            for(int l=0; l < varPins.tempPins.size(); l++)
-                                if(varPins.tempPins[l].nrPinTemp == i[2].as<int>()){
-                                    varPins.tempPins[l].nrPinHeat = i[0].as<int>();
-                                    varPins.tempPins[l].idPinHeat = varPins.pins.size();
-                                }
-                            varPins.pins.push_back(pin);
-                        }
-                    }
-
-                    if(configObject["PINS"].containsKey("TEMP_DATA")){
-                        JsonArray tempData = configObject["PINS"]["TEMP_DATA"];
-                        for(JsonVariant i : tempData){
-                            if(i.size() != 2) continue;
-                            if(!(i[0].as<int>() >= 0 && i[1].as<int>() >= 0)) continue;
-
-                            DHT initTer(i[0].as<int>(), DHT11);
-                            s_tempData data = {static_cast<int>(varPins.tempData.size()), 0, 0, false, 0, false, 0.0, 0.0, initTer};
-
-                            for(s_pin iPin : varPins.pins)
-                                if(iPin.nrPin == i[0].as<int>() && iPin.actionPin == "temperature")
-                                    data.idPinTemp = iPin.idPin;
-                            for(s_tempPin iTempPin : varPins.tempPins)
-                                if(iTempPin.nrPinTemp == i[0].as<int>()){
-                                    data.idPinHeat = iTempPin.idPinHeat;
-                                    data.idPinAir = iTempPin.idPinAir;
-                                }
-                            data.primTemp = i[1].as<int>();
-
-                            varPins.tempData.push_back(data);
+                            s_session sessionACC;
+                            sessionACC.token = ses["TOKEN"].as<String>();
+                            if(ses.containsKey("EXP_DATE")) sessionACC.expDate = {ses["EXP_DATE"]["DAY"].as<int>(), ses["EXP_DATE"]["MONTH"].as<int>(), ses["EXP_DATE"]["YEAR"].as<int>(), ses["EXP_DATE"]["HOUR"].as<int>(), ses["EXP_DATE"]["MINUTE"].as<int>()};
+                            else sessionACC.expDate = ownTime::addDates({i.containsKey("DAY_EXP_MAIN_SESSION") ? i["DAY_EXP_MAIN_SESSION"].as<int>() : 30});
+                            account.session.push_back(sessionACC);
                         }
                     }
                 }
+                if(i.containsKey("RIGHTS") || !i["RIGHTS"].isNull()) account.isAdmin = i["RIGHTS"].as<String>() == "ADMIN";
+                accounts.push_back(account);
             }
-            if(configObject.containsKey("ACCOUNTS")){
-                JsonArray accounts = configObject["ACCOUNTS"];
-                for(JsonVariant i : accounts){
-                    if(i.size() < 2) continue;
-                    if(i.containsKey("USERNAME") && i.containsKey("PASSWORD")){
-                        s_AccountSchema account;
+            Accounts = accounts;
+        }catch (...) {
+            // error
+        }
+    }
 
-                        if(!i["USERNAME"].isNull()) account.username = i["USERNAME"].as<String>();
-                        else continue;
-                        if(!i["PASSWORD"].isNull()) account.password = i["PASSWORD"].as<String>();
-                        else continue;
+    void actionList(JsonObject object){
+        try{
+            std::vector<struct s_actionList> actionList;
+            std::vector<struct s_actionWeek> actionWeek;
 
-                        bool exists = false;
-                        for(s_AccountSchema iAccount : Accounts)
-                            if(iAccount.username == account.username) exists = true;
+            for(JsonVariant obj : object["LISTS"].as<JsonArray>()){
+                if(!obj.containsKey("NR_PIN") && obj.containsKey("ACTION") && !obj.containsKey("TIMNE") && !obj["TIME"].containsKey("DAY") && !obj["TIME"].containsKey("MONTH") && !obj["TIME"].containsKey("YEAR") && !obj["TIME"].containsKey("HOUR") && !obj["TIME"].containsKey("MINUTE")) continue;
+                struct s_actionList al;
+                al.time.day = obj["TIME"]["DAY"].as<int>();
+                al.time.month = obj["TIME"]["MONTH"].as<int>();
+                al.time.year = obj["TIME"]["YEAR"].as<int>();
+                al.time.hours = obj["TIME"]["HOUR"].as<int>();
+                al.time.minute = obj["TIME"]["MINUTE"].as<int>();
+                al.time.second = obj["TIME"]["SECOND"].as<int>();
 
-                        if(exists) continue;
-
-                        if(i.containsKey("DATA_CREATE")){
-                            if(i["DATA_CREATE"].isNull())
-                                account.dateCreate = ownTime::addDates({});
-                            else{
-                                account.dateCreate.day = i["DATA_CREATE"]["DAY"].as<int>();
-                                account.dateCreate.month = i["DATA_CREATE"]["MONTH"].as<int>();
-                                account.dateCreate.year = i["DATA_CREATE"]["YEAR"].as<int>();
-                                account.dateCreate.hours = i["DATA_CREATE"]["HOUR"].as<int>();
-                                account.dateCreate.minute = i["DATA_CREATE"]["MINUTE"].as<int>();
-                            }
-                        }else account.dateCreate = ownTime::addDates({});
-                        if(i.containsKey("MOBILE_TOKEN")){
-                            if(i["MOBILE_TOKEN"].isNull() || !i["MOBILE_TOKEN"].containsKey("TOKEN") || i["MOBILE_TOKEN"]["TOKEN"].isNull()) continue;
-                            if(i["MOBILE_TOKEN"].containsKey("EXP_DATE")){
-                                account.mobileToken.expDate.day = i["MOBILE_TOKEN"]["EXP_DATE"]["DAY"].as<int>();
-                                account.mobileToken.expDate.month = i["MOBILE_TOKEN"]["EXP_DATE"]["MONTH"].as<int>();
-                                account.mobileToken.expDate.year = i["MOBILE_TOKEN"]["EXP_DATE"]["YEAR"].as<int>();
-                                account.mobileToken.expDate.hours = i["MOBILE_TOKEN"]["EXP_DATE"]["HOUR"].as<int>();
-                                account.mobileToken.expDate.minute = i["MOBILE_TOKEN"]["EXP_DATE"]["MINUTE"].as<int>();
-                            }else account.mobileToken.expDate = ownTime::addDates({i.containsKey("DAY_EXP_MOBILE_TOKEN") ? i["DAY_EXP_MOBILE_TOKEN"].as<int>() : 365});
-                            account.mobileToken.token = i["MOBILE_TOKEN"]["TOKEN"].as<String>();
-                        }
-                        if(i.containsKey("SESSION")){
-                            JsonArray sess = i["SESSION"];
-                            if(sess.size() > 0){
-                                for(JsonVariant ses : sess){
-                                    if(!ses.size() == 0 || !ses.containsKey("TOKEN") || ses["TOKEN"].isNull()) continue;
-                                    s_session sessionACC;
-                                    if(ses.containsKey("EXP_DATE")){
-                                        sessionACC.expDate.day = ses["EXP_DATE"]["DAY"].as<int>();
-                                        sessionACC.expDate.month = ses["EXP_DATE"]["MONTH"].as<int>();
-                                        sessionACC.expDate.year = ses["EXP_DATE"]["YEAR"].as<int>();
-                                        sessionACC.expDate.hours = ses["EXP_DATE"]["HOUR"].as<int>();
-                                        sessionACC.expDate.minute = ses["EXP_DATE"]["MINUTE"].as<int>();
-                                    }else sessionACC.expDate = ownTime::addDates({i.containsKey("DAY_EXP_MAIN_SESSION") ? i["DAY_EXP_MAIN_SESSION"].as<int>() : 30});
-                                    sessionACC.token = ses["TOKEN"].as<String>();
-                                }
-                            }
-                        }
-                        if(i.containsKey("RIGHTS")){
-                            if(i["RIGHTS"].isNull()) continue;
-                            if(i["RIGHTS"].as<String>() == "ADMIN") account.isAdmin = true;
-                            else account.isAdmin = false;
-                        }
-                        Accounts.push_back(account);
-                    }
-                }
+                al.action = obj["ACTION"].as<bool>();
+                if(obj["NR_PIN"].isNull()) continue;
+                al.nrPin = obj["NR_PIN"].as<int>();
+                for(s_pin s : varPins.pins)
+                    if(s.nrPin == al.nrPin)
+                        al.idPin = s.idPin;
+                if(validAction(al)) actionList.push_back(al);
+                else _expireAction = true;
             }
-        }catch(...){
-            Serial.println("Error reading config file");
-            return false;
-        }
 
-        // Serial.println("Config loaded: ");
-        // printAllData();
-        // Serial.println("\n\n");
+            for(JsonVariant obj : object["WEEK_LISTS"].as<JsonArray>()){
+                if(!obj.containsKey("NR_PIN") && obj.containsKey("ACTION") && !obj.containsKey("TIMNE") && !obj["TIME"].containsKey("DAY") && !obj["TIME"].containsKey("MONTH") && !obj["TIME"].containsKey("YEAR") && !obj["TIME"].containsKey("HOUR") && !obj["TIME"].containsKey("MINUTE") && !obj.containsKey("WEEK_DAY")) continue;
+                struct s_actionWeek al;
+                for(JsonVariant i : obj["WEEK_DAY"].as<JsonArray>())
+                    al.arrayWeek.push_back(i.as<int>());
+                al.time.hour = obj["TIME"]["HOUR"].as<int>();
+                al.time.minute = obj["TIME"]["MINUTE"].as<int>();
+                al.time.second = obj["TIME"]["SECOND"].as<int>();
+                al.action = obj["ACTION"].as<bool>();
+                if(obj["NR_PIN"].isNull()) continue;
+                al.nrPin = obj["NR_PIN"].as<int>();
+                for(s_pin s : varPins.pins)
+                    if(s.nrPin == al.nrPin)
+                        al.idPin = s.idPin;
+                al.weekCount = obj["WEEK_COUNT"].as<int>();
+                if(validAction(al)) actionWeek.push_back(al);
+                else _expireAction = true;
+            }
 
-        return true;
-    }
-    bool saveWifi_Config(){
-        try{
-            configObject["WIFI"]["SSID"] = dataWifi.ssid;
-            configObject["WIFI"]["PASSWORD"] = dataWifi.password;
-            configObject["WIFI"]["LOCAL_IP"] = dataWifi.local_ip.toString();
-            configObject["WIFI"]["GATEWAY"] = dataWifi.gateway.toString();
-            configObject["WIFI"]["SUBNET"] = dataWifi.subnet.toString();
+            varPins.actionList = actionList;
+            varPins.actionWeek = actionWeek;
         }catch(...){
-            Serial.println("Error saving \"WIFI\" config");
-            return false;
+            return;
         }
-        return true;
     }
-    bool saveFTP_Config(){
-        try{
-        configObject["FTP_SERVER"]["IP_ADDRESS"] = dataFtp.ip_address;
-        configObject["FTP_SERVER"]["PORT"] = dataFtp.port;
-        configObject["FTP_SERVER"]["USERNAME"] = dataFtp.username;
-        configObject["FTP_SERVER"]["PASSWORD"] = dataFtp.password;
-        }catch(...){
-            Serial.println("Error saving \"FTP\" config");
-            return false;
-        }
-        return true;
+}
+
+namespace save{
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> wifi(){
+        StaticJsonDocument<JSON_OBJECT_SIZE(100)> object;
+        object["SSID"] = dataWifi.ssid;
+        object["PASSWORD"] = dataWifi.password;
+        object["LOCAL_IP"] = dataWifi.local_ip.toString();
+        object["GATEWAY"] = dataWifi.gateway.toString();
+        object["SUBNET"] = dataWifi.subnet.toString();
+        return object;
     }
-    bool savePin_Config(){
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> ftp(){
+
+        StaticJsonDocument<JSON_OBJECT_SIZE(100)> object;
+        object["IP_ADDRESS"] = dataFtp.ip_address;
+        object["PORT"] = dataFtp.port;
+        object["USERNAME"] = dataFtp.username;
+        object["PASSWORD"] = dataFtp.password;
+        return object;
+    }
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> powerPins(){
         try{
-            JsonArray powerPins = configObject["PINS"].createNestedArray("POWER_PINS");
-            JsonArray tempPins = configObject["PINS"].createNestedArray("TEMP_PINS");
-            JsonArray airPins = configObject["PINS"].createNestedArray("AIR_PINS");
-            JsonArray heatPins = configObject["PINS"].createNestedArray("HEAT_PINS");
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray powerPins = doc.createNestedArray();
             for(s_pin pin : varPins.pins){
                 if(pin.actionPin == "power"){
                     JsonArray pinArray = powerPins.createNestedArray();
@@ -460,12 +365,36 @@ class config
                     pinArray.add(pin.namePin);
                     pinArray.add(false);
                 }
-                else if(pin.actionPin == "temperature") {
+            }
+            return powerPins;
+        }catch(...){
+            return JsonArray();
+        }
+    }
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> tempPins(){
+        try{
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray tempPins = doc.createNestedArray();
+            for(s_pin pin : varPins.pins){
+                if(pin.actionPin == "temperature") {
                     JsonArray pinArray = tempPins.createNestedArray();
                     pinArray.add(pin.nrPin);
                     pinArray.add(pin.namePin);
                 }
-                else if(pin.actionPin == "air"){
+            }
+            return tempPins;
+        }catch(...){
+            return JsonArray();
+        }
+    }
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> airPins(){
+        try{
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray airPins = doc.createNestedArray();
+            for(s_pin pin : varPins.pins){
+                if(pin.actionPin == "air"){
                     JsonArray pinArray = airPins.createNestedArray();
                     pinArray.add(pin.nrPin);
                     pinArray.add(pin.namePin);
@@ -473,7 +402,19 @@ class config
                         if(tempPin.nrPinAir == pin.nrPin)
                             pinArray.add(tempPin.nrPinTemp);
                 }
-                else if(pin.actionPin == "heat"){
+            }
+            return airPins;
+        }catch(...){
+            return JsonArray();
+        }
+    }
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> heatPins(){
+        try{
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray heatPins = doc.createNestedArray();
+            for(s_pin pin : varPins.pins){
+                if(pin.actionPin == "heat"){
                     JsonArray pinArray = heatPins.createNestedArray();
                     pinArray.add(pin.nrPin);
                     pinArray.add(pin.namePin);
@@ -482,8 +423,16 @@ class config
                             pinArray.add(tempPin.nrPinTemp);
                 }
             }
+            return heatPins;
+        }catch(...){
+            return JsonArray();
+        }
+    }
 
-            JsonArray tempData = configObject["PINS"].createNestedArray("TEMP_DATA");
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> tempData(){
+        try{
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray tempData = doc.createNestedArray();
             for(s_tempData data : varPins.tempData){
                 JsonArray tempDataArray = tempData.createNestedArray();
                 for(s_tempPin tempPin : varPins.tempPins)
@@ -491,15 +440,16 @@ class config
                         tempDataArray.add(tempPin.nrPinTemp);
                 tempDataArray.add(data.primTemp);
             }
+            return tempData;
         }catch(...){
-            Serial.println("Error saving \"PIN\" config");
-            return false;
+            return JsonArray();
         }
-        return true;
     }
-    bool saveAccount_Config(){
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> accounts(){
         try{
-            JsonArray users = configObject.createNestedArray("ACCOUNTS");
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray users = doc.createNestedArray();
             for(s_AccountSchema acc : Accounts){
                 JsonObject user = users.createNestedObject();
                 user["USERNAME"] = acc.username;
@@ -528,116 +478,298 @@ class config
                 user["DAY_EXP_MAIN_SESSION"] = acc.dayExp_mainSession;
                 user["DAY_EXP_MOBILE_TOKEN"] = acc.dayExp_mobileSession;
             }
-        }catch(...){
-            Serial.println("Error saving \"ACCOUNT\" config");
-            return false;
-        }
 
-        return true;
+            return users;
+        }catch(...){
+            return JsonArray();
+        }
     }
-    bool saveConfigFile(){
+
+    StaticJsonDocument<JSON_OBJECT_SIZE(100)> actionLists(){
         try{
-            configFile = SPIFFS.open("/test.json", "w");
-            if(!configFile){
-                Serial.println("Failed to open config file for writing");
-                return false;
+            StaticJsonDocument<JSON_OBJECT_SIZE(100)> doc;
+            JsonArray actionLists = doc.createNestedArray("LISTS");
+            for(s_actionList act : varPins.actionList){
+                JsonObject obj = actionLists.createNestedObject();
+                JsonObject time = obj.createNestedObject("TIME");
+                time["DAY"] = act.time.day;
+                time["MONTH"] = act.time.month;
+                time["YEAR"] = act.time.year;
+                time["HOUR"] = act.time.hours;
+                time["MINUTE"] = act.time.minute;
+                obj["ACTION"] = act.action;
+                obj["NR_PIN"] = act.nrPin;
             }
-            // serializeJson(configObject, configFile);
-            Serial.println("Save is done");
+
+            JsonArray weekAction = doc.createNestedArray("WEEK_LISTS");
+            for(s_actionWeek act : varPins.actionWeek){
+                JsonObject obj = weekAction.createNestedObject();
+                JsonArray weekDay = obj.createNestedArray("WEEK_DAY");
+                for(int i : act.arrayWeek) weekDay.add(i);
+                JsonArray time = obj.createNestedArray("TIME");
+                JsonObject timeObj = time.createNestedObject();
+                timeObj["HOUR"] = act.time.hour;
+                timeObj["MINUTE"] = act.time.minute;
+
+                obj["ACTION"] = act.action;
+                obj["NR_PIN"] = act.nrPin;
+                obj["WEEK_COUNT"] = act.weekCount;
+            }
+
+            return doc;
+        }catch(...){
+            return JsonArray();
+        }
+    }
+}
+
+class config
+{
+    private:
+
+    bool _configLoaded = false;
+    const String configFilePath = "/configFile.json";
+    const String factoryConfigFilePath = "/factoryConf.json";
+    StaticJsonDocument<JSON_OBJECT_SIZE(600)> configObject;
+
+    bool firstRun(){
+        if(configObject["FIRST_RUN"].as<bool>()){
+            Serial.println("First run");
+            configObject["FIRST_RUN"] = false;
+            File configFile = SPIFFS.open(factoryConfigFilePath, "w");
+            if(!configFile) return false;
+            serializeJson(configObject, configFile);
             configFile.close();
-        }catch(...){
-            Serial.println("Error saving config file");
+            write_to_spiffs();
+            return true;
+        }
+        return false;
+    }
+
+    bool recoverFactoryConfig(){
+        File configFile = SPIFFS.open(factoryConfigFilePath, "r");
+        if(!configFile){
             return false;
         }
+        deserializeJson(configObject, configFile);
+        configFile.close();
         return true;
     }
 
-    bool saveConfig(){
-        saveWifi_Config();
-        saveFTP_Config();
-        savePin_Config();
-        saveAccount_Config();
-        saveConfigFile();
+    bool load_from_spiffs(){
+        File configFile = SPIFFS.open(configFilePath, "r");
+        if(!configFile){
+            Serial.println("Failed to open config file");
+            rpLog.err("File to open config file from SPIFFS");
+            return false;
+        }
 
-        // int usedBytes = SPIFFS.usedBytes();
-        // int totalBytes = SPIFFS.totalBytes();
-        // int result = usedBytes * 100 / totalBytes;
-        // Serial.print("SPIFFS used: ");
-        // Serial.print(result);
-        // Serial.println("%");
-
-
-        // Serial.println("Config saved: ");
+        DeserializationError error = deserializeJson(configObject, configFile);
+        if(error){
+            Serial.printf("Failed to read file, error: %s\n", error.c_str());
+            rpLog.err("Failed to read config file from SPIFFS" + String(error.c_str()));
+            return false;
+        }
+        configFile.close();
         // serializeJsonPretty(configObject, Serial);
+        rpLog.log("Succesfully loaded config file from SPIFFS");
+        if(firstRun()) rpLog.log("Succesfully loaded factory config to SPIFFS");
         return true;
     }
 
-    bool validWifi_Config(){
-        if(dataWifi.ssid.length() == 0)
+    bool load_from_sd(){
+        if(!SD_CARD_AVILABLE) return false;
+        File configFile = SD.open(configFilePath, "r");
+        if(!configFile){
+            Serial.println("Failed to open config file");
+            rpLog.err("File to open config file from SD");
             return false;
-        if((dataWifi.local_ip[0] < 1 || dataWifi.local_ip[0] > 255) || (dataWifi.local_ip[1] < 1 || dataWifi.local_ip[1] > 255) || (dataWifi.local_ip[2] < 1 || dataWifi.local_ip[2] > 255) || (dataWifi.local_ip[3] < 1 || dataWifi.local_ip[3] > 255))
-            return false;
-        if((dataWifi.gateway[0] < 1 || dataWifi.gateway[0] > 255) || (dataWifi.gateway[1] < 1 || dataWifi.gateway[1] > 255) || (dataWifi.gateway[2] < 1 || dataWifi.gateway[2] > 255) || (dataWifi.gateway[3] < 1 || dataWifi.gateway[3] > 255))
-            return false;
-        if((dataWifi.subnet[0] < 1 || dataWifi.subnet[0] > 255) || (dataWifi.subnet[1] < 1 || dataWifi.subnet[1] > 255) || (dataWifi.subnet[2] < 1 || dataWifi.subnet[2] > 255) || (dataWifi.subnet[3] < 1 || dataWifi.subnet[3] > 255))
-            return false;
-        return true;
-    }
-    bool validFTP_Config(){
-        int ip[4];
-        ip[0] = String(dataFtp.ip_address).substring(0, String(dataFtp.ip_address).indexOf(".")).toInt();
-        String(dataFtp.ip_address).remove(0, String(dataFtp.ip_address).indexOf(".") + 1);
-        ip[1] = String(dataFtp.ip_address).substring(0, String(dataFtp.ip_address).indexOf(".")).toInt();
-        String(dataFtp.ip_address).remove(0, String(dataFtp.ip_address).indexOf(".") + 1);
-        ip[2] = String(dataFtp.ip_address).substring(0, String(dataFtp.ip_address).indexOf(".")).toInt();
-        String(dataFtp.ip_address).remove(0, String(dataFtp.ip_address).indexOf(".") + 1);
-        ip[3] = String(dataFtp.ip_address).substring(0, String(dataFtp.ip_address).indexOf(".")).toInt();
-        if(ip[0] < 1 || ip[0] > 255 || ip[1] < 1 || ip[1] > 255 || ip[2] < 1 || ip[2] > 255 || ip[3] < 1 || ip[3] > 255)
-            return false;
-        if(String(dataFtp.username).length() == 0)
-            return false;
-        if(dataFtp.port > 1 || dataFtp.port < 65535)
-            dataFtp.port = 21;
-        return true;
-    }
-    bool validPin_Config(){
+        }
 
+        DeserializationError error = deserializeJson(configObject, configFile);
+        if(error){
+            Serial.printf("Failed to read file, error: %s\n", error.c_str());
+            rpLog.err("Failed to read config file from SD" + String(error.c_str()));
+            return false;
+        }
+        configFile.close();
+        rpLog.log("Succesfully loaded config file from SD");
+        if(firstRun()) rpLog.log("Succesfully loaded factory config to SPIFFS");
         return true;
     }
-    bool validAccount_Config(){
-        try{
-            for(s_AccountSchema acc : Accounts){
-                // if(acc.username.length() == 0) Accounts.erase(std::remove(Accounts.begin(), Accounts.end(), acc), Accounts.end());
-                if(acc.dateCreate.day == 0 || acc.dateCreate.month == 0 || acc.dateCreate.year == 0 || acc.dateCreate.hours == 0 || acc.dateCreate.minute == 0)
-                    acc.dateCreate = TimeS.Today();
-                if(acc.dayExp_mainSession == 0) acc.dayExp_mainSession = 30;
-                if(acc.dayExp_mobileSession == 0) acc.dayExp_mobileSession = 365;
-            }
-        }catch(...){
-            Serial.println("Wystąpił błąd podczas sprawdzania kont");
+
+    bool write_to_spiffs(){
+        File configFile = SPIFFS.open(configFilePath, "w");
+        if(!configFile){
+            Serial.println("Failed to open config file");
+            rpLog.err("File to open config file from SPIFFS");
             return false;
         }
+
+        serializeJson(configObject, configFile);
+        configFile.close();
+        rpLog.log("Config file save to SPIFFS");
         return true;
     }
-    bool validData(){
-        if(!validWifi_Config()){
-            Serial.println("Wifi config is not valid");
+
+    bool write_to_sd(){
+        if(!SD_CARD_AVILABLE) return false;
+        File configFile = SD.open(configFilePath, "w");
+        if(!configFile){
+            Serial.println("Failed to open config file");
+            rpLog.err("File to open config file from SD");
             return false;
         }
-        if(!validFTP_Config()){
-            Serial.println("FTP config is not valid");
-            return false;
-        }
-        if(!validPin_Config()){
-            Serial.println("PIN config is not valid");
-            return false;
-        }
-        if(!validAccount_Config()){
-            Serial.println("ACCOUNT config is not valid");
-            return false;
-        }
+
+        serializeJson(configObject, configFile);
+        configFile.close();
+        rpLog.log("Config file save to SD");
         return true;
     }
-};
+
+    public:
+
+    config(){};
+    ~config(){};
+
+    String spiffsSize(){
+        int usedBytes = SPIFFS.usedBytes();
+        int totalBytes = SPIFFS.totalBytes();
+        int result = usedBytes * 100 / totalBytes;
+        return String("SPIFFS used: ") + String(result) + String("%");
+    }
+
+    bool isLoaded(){ return _configLoaded; }
+
+    bool factoryResetConfig(){
+        if(!recoverFactoryConfig()){
+            rpLog.err("Failed to recover factory config");
+            Serial.println("Failed to recover factory config");
+            return false;
+        }
+        if(!write_to_spiffs()){
+            rpLog.err("Failed to write factory config to SPIFFS");
+            return false;
+        }
+        if(!write_to_sd()){
+            rpLog.err("Failed to write factory config to SD");
+            return false;
+        }
+        rpLog.log("Succesfully recovered factory config");
+        return true;
+    }
+
+    void load_configuration(){
+        if(load_from_spiffs()){
+            Serial.println("Config file loaded from SPIFFS");
+            rpLog.log("Config file loaded from SPIFFS");
+        }else if(load_from_sd()){
+            Serial.println("Config file loaded from SD card");
+            rpLog.log("Config file loaded from SD card");
+        }else{
+            Serial.println("Config file not found");
+            rpLog.err("Config file not found");
+            rpLog.big_error();
+            return;
+        }
+
+        load::wifi(configObject["WIFI"]);
+        load::ftp(configObject["FTP"]);
+        load::accounts(configObject["ACCOUNTS"]);
+        load::powerPins(configObject["PINS"]["POWER_PINS"]);
+        load::tempPins(configObject["PINS"]["TEMP_PINS"]);
+        load::airPins(configObject["PINS"]["AIR_PINS"]);
+        load::heatPins(configObject["PINS"]["HEAT_PINS"]);
+        load::tempData(configObject["PINS"]["TEMP_DATA"]);
+        load::actionList(configObject["ACTIONS"]);
+        // make_log();
+
+        if(_expireAction) save_action();
+        _configLoaded = true;
+        rpLog.log("Configuration loaded");
+    }
+
+    void save_config(){
+        if(!write_to_spiffs()){
+            Serial.println("Failed save config file to SPIFFS");
+            rpLog.log("Failed save config file to SPIFFS");
+        }
+        else if(!write_to_sd()){
+            Serial.println("Failed save config file to SD");
+            rpLog.log("Failed save config file to SD");
+        }
+        else{
+            Serial.println("Config file not saved");
+            rpLog.log("Config file not saved");
+        }
+    }
+
+    void save_complete_config(){
+        save::wifi();
+        save::ftp();
+        save::accounts();
+        save::powerPins();
+        save::tempPins();
+        save::airPins();
+        save::heatPins();
+        save::tempData();
+
+        save_config();
+    }
+
+    void save_wifi(){
+        configObject["WIFI"] = save::wifi();
+        save_config();
+    }
+
+    void save_ftp(){
+        configObject["FTP_SERVER"] = save::ftp();
+        save_config();
+    }
+
+    void save_accounts(){
+        configObject["ACCOUNTS"] = save::accounts();
+        save_config();
+    }
+
+    void save_powerPins(){
+        configObject["PINS"]["POWER_PINS"] = save::powerPins();
+        save_config();
+    }
+
+    void save_tempPins(){
+        configObject["PINS"]["TEMP_PINS"] = save::tempPins();
+        save_config();
+    }
+
+    void save_airPins(){
+        configObject["PINS"]["AIR_PINS"] = save::airPins();
+        save_config();
+    }
+
+    void save_heatPins(){
+        configObject["PINS"]["HEAT_PINS"] = save::heatPins();
+        save_config();
+    }
+
+    void save_tempData(){
+        configObject["PINS"]["TEMP_DATA"] = save::tempData();
+        save_config();
+    }
+
+    void save_action(){
+        configObject["ACTIONS"] = save::actionLists();
+        save_config();
+    }
+
+    void save_allPins(){
+        save::powerPins();
+        save::tempPins();
+        save::airPins();
+        save::heatPins();
+        save_config();
+    }
+
+} configFile;
 
 #endif //CONFFILE_H

@@ -1,0 +1,9 @@
+{
+    "updateAvilable": true,
+    "updateVersion": "0.0.3",
+    "SPIFFS": true,
+    "SOFTWARE": true,
+    "URL_SOFT": "/repos/Marak123/test/git/blobs/2bb634589ee96ca188f262702b16ef66019bab2b",
+    "URL_SPIFFS": "/repos/Marak123/test/git/blobs/2228adff467aa743f438ec03a3585857a06ef6e2",
+    "HOST": "raw.githubusercontent.com"
+}
