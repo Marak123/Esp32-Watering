@@ -35,8 +35,8 @@ void initWiFi(String ssid=dataWifi.ssid, String password=dataWifi.password, Stri
         timeout_counter++;
         if(timeout_counter >= 5) ESP.restart();
     }
-
     Serial.print("Connected to the WiFi network. \nWith IP: " + WiFi.localIP().toString() + "\nGateway: " + WiFi.gatewayIP().toString() + "\nSubnet: " + WiFi.subnetMask().toString() + "\nHostname: " + String(WiFi.getHostname()) + "\n\n");
+    TimeS.getTimeAndSetTimezone();
     rpLog.unloadBuffer();
     rpLog.log("Connected to the WiFi network. With IP: " + WiFi.localIP().toString() + " Gateway: " + WiFi.gatewayIP().toString() + " Subnet: " + WiFi.subnetMask().toString() + " Hostname: " + String(WiFi.getHostname()) );
 }
@@ -506,8 +506,7 @@ namespace save{
                 JsonObject obj = weekAction.createNestedObject();
                 JsonArray weekDay = obj.createNestedArray("WEEK_DAY");
                 for(int i : act.arrayWeek) weekDay.add(i);
-                JsonArray time = obj.createNestedArray("TIME");
-                JsonObject timeObj = time.createNestedObject();
+                JsonObject timeObj = obj.createNestedObject("TIME");
                 timeObj["HOUR"] = act.time.hour;
                 timeObj["MINUTE"] = act.time.minute;
 
@@ -574,6 +573,7 @@ class config
         // serializeJsonPretty(configObject, Serial);
         rpLog.log("Succesfully loaded config file from SPIFFS");
         if(firstRun()) rpLog.log("Succesfully loaded factory config to SPIFFS");
+        if(!configObject["USE_SD_CARD"].as<bool>()) SD_CARD_AVILABLE = false;
         return true;
     }
 

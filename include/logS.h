@@ -39,7 +39,7 @@ class raportLogs{
 
     String errFilePath = "/raportFile.txt";
     String logFilePath = "/logFile.txt";
-    String infoUserPath = "userInfo";
+    String infoUserPath = "userinfo";
 
     struct s_buffer_log{
         String type;
@@ -56,7 +56,7 @@ class raportLogs{
 
     bool writeAppend_SD(String path, String msg){
         if(!SD_CARD_AVILABLE) return false;
-        File file = SD.open(path, FILE_APPEND);
+        File file = SD.open(path, FILE_APPEND, true);
         if(!file) return false;
         file.println(msg);
         file.close();
@@ -72,8 +72,7 @@ class raportLogs{
 
     raportLogs(){
         if(!SD_CARD_AVILABLE) return;
-        // if(!SD.exists(infoUserPath)) SD.mkdir(infoUserPath);
-    };//ftpClient.initConnection(dataFtp.ip_address, dataFtp.username, dataFtp.password, dataFtp.port); };
+    };
     ~raportLogs(){};
 
     void setErrFile(String filePath){ errFilePath = filePath; }
@@ -150,6 +149,7 @@ class raportLogs{
         }
 
         String msg = msgData() + make_msg("info", info, ip, user_agent, platform, browser, url);
+        // if(!SD.exists("/" + infoUserPath)) SD.mkdir(infoUserPath);
         writeData("/" + infoUserPath + "/" + user + ".txt", msg);
     }
 

@@ -1172,7 +1172,8 @@ small {
 
 .timetable .main .list {
     width: 100%;
-    height: 50%
+    height: 50%;
+    overflow: auto;
 }
 
 .timetable .main .list .legend {
@@ -1253,7 +1254,10 @@ small {
     font-size: 8px;
     color: var(--max-light);
     margin: 0;
-    font-weight: bold
+    font-weight: bold;
+    width: 100%;
+    white-space: nowrap;
+    text-align: center
 }
 
 .timetable .main .list-elem-tooltip {
@@ -1286,7 +1290,7 @@ small {
     height: 50px;
     background-color: var(--transparent-bg);
     display: flex;
-    position: sticky
+    position: sticky;
 }
 
 .navigation {

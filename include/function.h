@@ -71,10 +71,12 @@ namespace arrCreator{
     else arrJS = String("[");
     if(varPins.actionWeek.size() != 0){
      for (s_actionWeek acW : varPins.actionWeek) {
-       arrJS += String("[[");
-       for(int wd=0; wd < acW.arrayWeek.size(); wd++) arrJS += String(acW.arrayWeek[wd]) + ", ";
-       arrJS += String("], [") + String(acW.time.hour) + ", " + String(acW.time.minute) + "], " + String(acW.action) + ", " + String(acW.nrPin) + "],";
+        arrJS += String("[[");
+        for(int wd=0; wd < acW.arrayWeek.size(); wd++) arrJS += String(acW.arrayWeek[wd]) + ", ";
+        arrJS = arrJS.substring(0, arrJS.length() - 2);
+        arrJS += String("], [") + String(acW.time.hour) + ", " + String(acW.time.minute) + "], " + String(acW.action) + ", " + String(acW.nrPin) + "],";
      }
+     arrJS = arrJS.substring(0, arrJS.length() - 1);
     }
     if(!sameArray) arrJS += String("];");
     else arrJS += String("]");
@@ -104,7 +106,6 @@ std::vector<int> convArray(String par)
       if (i == par.length() - 1) break;
     }
   }
-  Serial.println("");
   return arr;
 }
 
@@ -112,21 +113,15 @@ std::vector<int> convArray(String par)
 void initialPins(std::vector<s_pin> array, std::vector<s_powerPin> power)
 {
   for (int i = 0; i < array.size(); i++)
-  {
     if (array[i].actionPin == "power" || array[i].actionPin == "air" || array[i].actionPin == "heat")
     {
       pinMode(array[i].nrPin, OUTPUT);
       for (int j = 0; j < power.size(); j++)
-      {
         if (power[j].idPin == array[i].idPin)
-        {
           digitalWrite(array[i].nrPin, power[j].power);
-        }
-      }
     }
     else if (array[i].actionPin == "temperature")
       pinMode(array[i].nrPin, INPUT);
-  }
 }
 
 ///Wyszukiwanie slow w tablicy
@@ -321,6 +316,30 @@ String getFromRequest(AsyncWebServerRequest *request, String whatGet){
         return h->value().c_str();
     }
     return "";
+}
+
+bool actionExist(struct s_actionList obj){
+  for(struct s_actionList a : varPins.actionList){
+    if( a.nrPin == obj.nrPin &&
+        a.action == obj.action &&
+        a.time.day == obj.time.day &&
+        a.time.month == obj.time.month &&
+        a.time.year == obj.time.year &&
+        a.time.hours == obj.time.hours &&
+        a.time.minute == obj.time.minute) return true;
+  }
+  return false;
+}
+
+bool weekActionExist(struct s_actionWeek obj){
+  for(struct s_actionWeek a : varPins.actionWeek){
+    if( a.nrPin == obj.nrPin &&
+        a.action == obj.action &&
+        a.time.hour == obj.time.hour &&
+        a.time.minute == obj.time.minute &&
+        a.arrayWeek == obj.arrayWeek) return true;
+  }
+  return false;
 }
 
 #endif

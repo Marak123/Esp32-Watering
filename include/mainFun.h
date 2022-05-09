@@ -22,6 +22,11 @@ StaticJsonDocument<JSON_OBJECT_SIZE(20)> inLoopActionPerform()
                 for (int j = 0; j < varPins.pins.size(); j++)
                     if (varPins.pins[j].idPin == varPins.actionList[i].idPin && varPins.pins[j].nrPin == varPins.actionList[i].nrPin){
                         digitalWrite(varPins.actionList[i].nrPin, varPins.actionList[i].action);
+                        StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonTemp;
+                        jsonTemp["what"] = "changePowerPin";
+                        jsonTemp["pinID"] = varPins.pins[j].nrPin;
+                        jsonTemp["action"] = varPins.actionList[i].action;
+                        web_serv.notifyClients(jsonTemp);
                         rpLog.log("Wykonano akcje \"" + String(varPins.actionList[i].action) + "\" na pinie \"" + String(varPins.actionList[i].nrPin) + "\"");
                     }
                 varPins.actionList.erase(varPins.actionList.begin() + i);
@@ -34,62 +39,33 @@ StaticJsonDocument<JSON_OBJECT_SIZE(20)> inLoopActionPerform()
         rpLog.err("Wystapil blad w \"inLoopActionPerform\" przy sprawdzaniu listy akcji do wykonania");
     }
 
-    for(int AW = 0; AW < varPins.actionWeek.size(); AW++)
-        if(isRune || varPins.actionWeek[AW].weekCount == 0){
-            isRune = false;
-            if(TimeS.nrWeekDay() == 1){
-                for (int aW = 0; aW < varPins.actionWeek.size(); aW++)
-                    for (int wD = 0; wD < varPins.actionWeek[aW].arrayWeek.size(); wD++){
-                        s_date dateAction = ownTime::addDates({varPins.actionWeek[aW].arrayWeek[wD] - 1});
-                        dateAction.hours = varPins.actionWeek[aW].time.hour;
-                        dateAction.minute = varPins.actionWeek[aW].time.minute;
+    int startWeek = 0;
+    int endWeek = 0;
 
-                        varPins.actionList.push_back({dateAction, varPins.actionWeek[aW].action, varPins.actionWeek[aW].idPin,  varPins.actionWeek[aW].nrPin});
-                        varPins.actionWeek[aW].weekCount++;
-                    }
-            }else{
-                int dayAdd = 0;
-                bool isOnList = false;
-                for (int aW = 0; aW < varPins.actionWeek.size(); aW++){
-                    for (int wD = 0; wD < varPins.actionWeek[aW].arrayWeek.size(); wD++){
-                        if(varPins.actionWeek[aW].arrayWeek[wD] > TimeS.nrWeekDay()) dayAdd = varPins.actionWeek[aW].arrayWeek[wD] - TimeS.nrWeekDay();
-                        else if(varPins.actionWeek[aW].arrayWeek[wD] == TimeS.nrWeekDay())
-                            if(varPins.actionWeek[aW].time.hour > TimeS.Hour() || (varPins.actionWeek[aW].time.hour == TimeS.Hour() && varPins.actionWeek[aW].time.minute > TimeS.Minute())) dayAdd = 0;
-                            else continue;
-                        else continue;
+    int wDay = TimeS.timeinfo.tm_wday;
 
-                        s_date dateAction = ownTime::addDates({23, 11, 2021}, {dayAdd});
-                        dateAction.hours = varPins.actionWeek[aW].time.hour;
-                        dateAction.minute = varPins.actionWeek[aW].time.minute;
+    if(TimeS.Day() < wDay) startWeek = ownTime::dayINmonth(TimeS.Month()-1, TimeS.Year()) - (wDay - TimeS.Day());
+    else startWeek = TimeS.Day() - wDay;
 
-                        for(int aL = 0; aL < varPins.actionList.size(); aL++)
-                            if(dateAction.day == varPins.actionList[aL].time.day && dateAction.month == varPins.actionList[aL].time.month && dateAction.year == varPins.actionList[aL].time.year && dateAction.hours == varPins.actionList[aL].time.hours && dateAction.minute == varPins.actionList[aL].time.minute){
-                                isOnList = true;
-                                break;
-                            }
-                        if(isOnList){
-                            dayAdd = 0;
-                            isOnList = false;
-                            continue;
-                        }
+    if(ownTime::dayINmonth(TimeS.Month(), TimeS.Year()) < TimeS.Day() + wDay) endWeek = (wDay + TimeS.Day()) - ownTime::dayINmonth(TimeS.Month(), TimeS.Year());
+    else endWeek = TimeS.Day() + wDay;
 
-                        varPins.actionList.push_back({dateAction, varPins.actionWeek[aW].action, varPins.actionWeek[aW].idPin,  varPins.actionWeek[aW].nrPin});
-                        change = true;
-                    }
-                    varPins.actionWeek[aW].weekCount++;
+    for(int AW = 0; AW < varPins.actionWeek.size(); AW++){
+        if((varPins.actionWeek[AW].nrDayInWeek[0] != startWeek || varPins.actionWeek[AW].nrDayInWeek[1] != endWeek) || wDay == 7 || (varPins.actionWeek[AW].nrDayInWeek[0] == -1 || varPins.actionWeek[AW].nrDayInWeek[1] == -1)){
+            for(int wd : varPins.actionWeek[AW].arrayWeek){
+                struct s_date da;
+                if(wd + 1 == wDay) continue;
+                else if(wd + 1 > wDay) da = ownTime::addDates({ wd - wDay + 1 });
+                else if(wDay == 7) da = ownTime::addDates({ wd + 1});
+                struct s_actionList act = {{da.day, da.month, da.year, varPins.actionWeek[AW].time.hour, varPins.actionWeek[AW].time.minute, varPins.actionWeek[AW].time.second}, varPins.actionWeek[AW].action, varPins.actionWeek[AW].idPin,  varPins.actionWeek[AW].nrPin};
+                if(!actionExist(act)){
+                    varPins.actionList.push_back(act);
+                    change = true;
                 }
             }
-        }
-
-    if((TimeS.nrWeekDay() == 1 && TimeS.Hour() == 0 && TimeS.Minute() == 0)){
-        for (int aW = 0; aW < varPins.actionWeek.size(); aW++){
-            for (int wD = 0; wD < varPins.actionWeek[aW].arrayWeek.size(); wD++){
-                s_date dateAction = ownTime::addDates({varPins.actionWeek[aW].arrayWeek[wD] - 1});
-
-                varPins.actionList.push_back({dateAction, varPins.actionWeek[aW].action, varPins.actionWeek[aW].idPin,  varPins.actionWeek[aW].nrPin});
-                change = true;
-            }
-            varPins.actionWeek[aW].weekCount++;
+            varPins.actionWeek[AW].weekCount++;
+            varPins.actionWeek[AW].nrDayInWeek[0] = startWeek;
+            varPins.actionWeek[AW].nrDayInWeek[1] = endWeek;
         }
     }
 

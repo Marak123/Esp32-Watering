@@ -1,2 +1,0 @@
-Naprawić stronę, wygląd.
-Przycisk Restartu ESP32

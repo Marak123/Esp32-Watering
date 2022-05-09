@@ -14,31 +14,57 @@ namespace ownTime
     {
     public:
         struct tm timeinfo = {0};
-        ownTime(const char *ntpServer = "pool.ntp.org", const long gmtOffset_sec = 3600, const int daylightOffset_sec = 0)
+        ownTime(const char *ntpServer = "pool.ntp.org", const long gmtOffset_sec = 0, const int daylightOffset_sec = 0)
         {
             configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
         }
 
+        void getTimeAndSetTimezone(){
+          if(WiFi.status() == WL_CONNECTED)
+            if (!getLocalTime(&timeinfo)){
+              Serial.println("Błąd pobierania czasu.");
+              return;
+            }
+          setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+          tzset();
+
+          // Serial.print("Czas: ");
+          // Serial.print(timeinfo.tm_hour);
+          // Serial.print(":");
+          // Serial.print(timeinfo.tm_min);
+          // Serial.print(":");
+          // Serial.print(timeinfo.tm_sec);
+          // Serial.print(" ");
+          // Serial.print(timeinfo.tm_mday);
+          // Serial.print(".");
+          // Serial.print(timeinfo.tm_mon);
+          // Serial.print(".");
+          // Serial.print(timeinfo.tm_year);
+          // Serial.print(" ");
+          // Serial.print(timeinfo.tm_wday);
+          // Serial.print(" ");
+          // Serial.print(timeinfo.tm_yday);
+          // Serial.print(" ");
+          // Serial.print(timeinfo.tm_isdst);
+          // Serial.println();
+        }
+
         void getTime()
         {
-            int cnt = 0;
-            pinMode(2, OUTPUT);
-            if(WiFi.status() == WL_CONNECTED)
-              while (!getLocalTime(&timeinfo))
-              {
-                  cnt++;
+            if(WiFi.status() == WL_CONNECTED){
+              pinMode(2, OUTPUT);
+              int i = 0;
+              while (!getLocalTime(&timeinfo, 0)){
+                i++;
+                digitalWrite(2, HIGH);
+                if(i > 100){
                   Serial.println("Błąd pobierania czasu.");
-                  digitalWrite(2, HIGH);
-                  delay(500);
                   digitalWrite(2, LOW);
-                  delay(500);
-                  if(cnt > 10)
-                  {
-                      Serial.println("Nie udało się pobrać czasu. Resetowanie płytki...");
-                      ESP.restart();
-                  }
                   return;
+                }
               }
+              digitalWrite(2, LOW);
+            }
         }
 
         int Hour()

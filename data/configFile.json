@@ -1,5 +1,6 @@
 {
     "FIRST_RUN": true,
+    "USE_SD_CARD": false,
     "WIFI": {
         "SSID": "OtakaNazwa",
         "PASSWORD": "63D34E7A",
@@ -59,13 +60,11 @@
         "WEEK_LISTS": [
             {
                 "WEEK_DAY": [0, 1, 2, 3, 4, 5, 6],
-                "TIME": [
-                    {
-                        "HOUR": 8,
-                        "MINUTE": 0,
-                        "SECOND": 0
-                    }
-                ],
+                "TIME": {
+                    "HOUR": 8,
+                    "MINUTE": 0,
+                    "SECOND": 0
+                },
                 "ACTION": true,
                 "NR_PIN": 12,
                 "WEEK_COUNT": 1

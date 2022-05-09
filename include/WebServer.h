@@ -27,7 +27,6 @@ public:
   {
     char data[500];
     size_t len = serializeJson(json, data);
-    // Serial.println("Wysyłam info");
     ws.textAll(data, len);
   }
 
@@ -185,8 +184,8 @@ public:
           pins::changePower(pin.toInt(), act);
 
           StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
-          jsonRet["pinID"] = request->arg("pinID");
-          jsonRet["action"] = request->arg("action");
+          jsonRet["pinID"] = request->arg("pinID").toInt();
+          jsonRet["action"] = request->arg("action") == "true" ? true : false;
           jsonRet["what"] = request->arg("what");
           notifyClients(jsonRet);
 
@@ -268,25 +267,26 @@ public:
             if (idPin == -1) continue;
 
             if (request->arg("what") == "planDate"){
-              varPins.actionList.push_back({
-                {dateCv.day, dateCv.month, dateCv.year, hourCv.hour, hourCv.minute},
-                act,
-                idPin,
-                arrayPin[k]
-              });
+              struct s_actionList ac = {  {dateCv.day, dateCv.month, dateCv.year, hourCv.hour, hourCv.minute},
+                                        act,
+                                        idPin,
+                                        arrayPin[k] };
+              if(!actionExist(ac)) varPins.actionList.push_back(ac);
+              else request->send(302, "plain/text", "FAILED - action exist");
             }
             if (request->arg("what") == "planWeek"){
-              varPins.actionWeek.push_back({
-                arrayWeek,
-                hourCv,
-                act,
-                idPin,
-                arrayPin[k],
-                0
-              });
+              struct s_actionWeek ac = {  arrayWeek,
+                                          hourCv,
+                                          act,
+                                          idPin,
+                                          arrayPin[k],
+                                          0,
+                                          {-1, -1} };
+              if(!weekActionExist(ac)) varPins.actionWeek.push_back(ac);
+              else request->send(302, "plain/text", "FAILED - action exist");
             }
           }
-          StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+          StaticJsonDocument<JSON_OBJECT_SIZE(100)> jsonRet;
           jsonRet["what"] = request->arg("what");
           jsonRet["arrayListActivity"] = arrCreator::listActionElm(true);
 
@@ -339,7 +339,7 @@ public:
             });
 
         server.on(
-            "/timetableRemove", HTTP_POST, [this](AsyncWebServerRequest *request)
+            "/timetableRemove", HTTP_DELETE, [this](AsyncWebServerRequest *request)
             {
               if(!authenticationAccount(request, {"token", "what", "indexElm", "action", "pinID", "data", "hours"}, {"timetable"})){
                 request->send(401, "plain/text", "FAILED");
@@ -365,7 +365,7 @@ public:
                   if(varPins.actionList[i].action == request->arg("action").toInt()) point++;
                 }
                 if(point == 2){
-                  varPins.actionList.erase(varPins.actionList.begin());
+                  varPins.actionList.erase(varPins.actionList.begin() + i);
                   break;
                 }
               }
@@ -373,6 +373,42 @@ public:
               StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
               jsonRet["what"] = request->arg("what");
               jsonRet["actionEle"] = arrCreator::listActionElm(true);
+
+              notifyClients(jsonRet);
+              rpLog.user_info(user, "Usunięcie akcji \"" + request->arg("action") + "\" na pinie \"" + request->arg("pinID") + "\" na dni " + request->arg("data") + " o godzinie " + request->arg("hours"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());
+              request->send(200, "plain/text", "SUCCESS");
+            });
+
+        server.on(
+            "/weekActionRemove", HTTP_DELETE, [this](AsyncWebServerRequest *request)
+            {
+              if(!authenticationAccount(request, {"token", "what", "indexElm", "action", "pinID", "dayNumber", "hours"}, {"weekactionremove"})){
+                request->send(401, "plain/text", "FAILED");
+                return;
+              }
+
+              String user = "Nieznany";
+              for(int i=0; i < Accounts.size(); i++)
+                for(int j=0; j < Accounts[i].session.size(); j++)
+                  if(Accounts[i].session[j].token == request->arg("token"))
+                    user = Accounts[i].username;
+
+              int point = 0;
+              for(int i=0; i < varPins.actionWeek.size(); i++){
+                point = 0;
+                s_hour hour = ownTime::convertHours(request->arg("hours"));
+                std::vector<int> arr = convArray(request->arg("dayNumber"));
+                if(varPins.actionWeek[i].arrayWeek.size() != arr.size()) continue;
+                if(varPins.actionWeek[i].action == request->arg("action").toInt() && varPins.actionWeek[i].nrPin == request->arg("pinID").toInt() && varPins.actionWeek[i].time.hour == hour.hour && varPins.actionWeek[i].time.minute == hour.minute)
+                  for(int h=0; h < arr.size(); h++)
+                    if(varPins.actionWeek[i].arrayWeek[h] == arr[h]) point++;
+                if(point == arr.size())
+                  varPins.actionWeek.erase(varPins.actionWeek.begin() + i);
+              }
+
+              StaticJsonDocument<JSON_OBJECT_SIZE(20)> jsonRet;
+              jsonRet["what"] = request->arg("what");
+              jsonRet["actionEle"] = arrCreator::weekActionList(true);
 
               notifyClients(jsonRet);
               rpLog.user_info(user, "Usunięcie akcji \"" + request->arg("action") + "\" na pinie \"" + request->arg("pinID") + "\" na dni " + request->arg("data") + " o godzinie " + request->arg("hours"), request->client()->remoteIP().toString(), getFromRequest(request, "User-Agent"), "", "", request->url());

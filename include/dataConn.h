@@ -16,10 +16,6 @@ bool SD_CARD_AVILABLE = true;
 
 // Inicjacja SD_CARD
 void initSD(){
-    // SPIClass * hspi = NULL;
-    // hspi = new SPIClass(SPI);
-    // hspi->begin(18, 19, 23, 5);
-
     try{
         int cRel = 10;
         while(cRel > 0){

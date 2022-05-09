@@ -106,6 +106,7 @@ struct s_actionWeek{
     int idPin; //Obcy indetyfikator pinu ze struktury s_pin
     int nrPin; //Numer pinu ze struktury s_pin
     int weekCount; //Liczba tygodni z wykonana akcja
+    int nrDayInWeek[2]; //Numery dni początku i końca tygodnia wykonanej już akcji
 };
 
 // Struktura przechowywujaca dane o skonfigurowanych pinach oraz akcjach zaplanowanych przez uzytkownika

@@ -1,0 +1,1 @@
+Pierwsza wydana wersja oprogramowania pozwalająca na planowanie zadań podlewania ogródka i nie tylko.
