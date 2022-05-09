@@ -38,5 +38,5 @@
 ; .vscode/launch.json
 ; .vscode/ipch
 ESP32-Nawadniacz.code-workspace
-Installer
-.pio
+Installer/
+.pio/
