@@ -2,8 +2,8 @@
     "FIRST_RUN": true,
     "USE_SD_CARD": false,
     "WIFI": {
-        "SSID": "OtakaNazwa",
-        "PASSWORD": "63D34E7A",
+        "SSID": "",
+        "PASSWORD": "",
         "HOSTNAME": "ESP32_Nawadnianie"
     },
     "PINS": {
