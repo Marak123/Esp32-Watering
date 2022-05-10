@@ -33,7 +33,7 @@ void initWiFi(String ssid=dataWifi.ssid, String password=dataWifi.password, Stri
         Serial.print(".");
         delay(1000);
         timeout_counter++;
-        if(timeout_counter >= 5) ESP.restart();
+        if(timeout_counter >= 10) ESP.restart();
     }
     Serial.print("Connected to the WiFi network. \nWith IP: " + WiFi.localIP().toString() + "\nGateway: " + WiFi.gatewayIP().toString() + "\nSubnet: " + WiFi.subnetMask().toString() + "\nHostname: " + String(WiFi.getHostname()) + "\n\n");
     TimeS.getTimeAndSetTimezone();
