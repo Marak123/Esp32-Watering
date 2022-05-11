@@ -17,11 +17,12 @@ void setup()
   Serial.begin(115200);
   Serial.println("\n\n");
 
-  // Inicjacja SD_CARD
-  initSD();
-
   // Inicjacja spiffs
   initSPIFFS();
+
+  // // Inicjacja SD_CARD
+  // initSD();
+
 
   // Load config file
   configFile.load_configuration();

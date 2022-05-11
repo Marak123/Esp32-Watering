@@ -54,9 +54,10 @@ StaticJsonDocument<JSON_OBJECT_SIZE(20)> inLoopActionPerform()
         if((varPins.actionWeek[AW].nrDayInWeek[0] != startWeek || varPins.actionWeek[AW].nrDayInWeek[1] != endWeek) || wDay == 7 || (varPins.actionWeek[AW].nrDayInWeek[0] == -1 || varPins.actionWeek[AW].nrDayInWeek[1] == -1)){
             for(int wd : varPins.actionWeek[AW].arrayWeek){
                 struct s_date da;
-                if(wd + 1 == wDay) continue;
-                else if(wd + 1 > wDay) da = ownTime::addDates({ wd - wDay + 1 });
+                if((wd + 1) > wDay) da = ownTime::addDates({ (wd + 1)- wDay });
                 else if(wDay == 7) da = ownTime::addDates({ wd + 1});
+                else continue;
+
                 struct s_actionList act = {{da.day, da.month, da.year, varPins.actionWeek[AW].time.hour, varPins.actionWeek[AW].time.minute, varPins.actionWeek[AW].time.second}, varPins.actionWeek[AW].action, varPins.actionWeek[AW].idPin,  varPins.actionWeek[AW].nrPin};
                 if(!actionExist(act)){
                     varPins.actionList.push_back(act);

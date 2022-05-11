@@ -675,7 +675,8 @@
     display: flex;
     justify-content: space-around;
     align-items: center;
-    margin-top: 5px
+    margin-top: 5px;
+    width: 100%;
 }
 
 .power-now>div .text-info {
@@ -685,8 +686,8 @@
     justify-content: center;
     align-items: center;
     font-size: 3.5vw;
-    width: auto;
-    height: auto;
+    width: 80%;
+    /* height: auto; */
     margin-left: 10px;
     color: var(--powerNow-color) !important
 }
@@ -700,8 +701,16 @@
     margin: 0
 }
 
-.power-now>div .text-info .info-power.power-on {
-    margin: 0 1.25vw
+.power-now>div .text-info .info-power{
+    height: 100%;
+    width: 70%;
+    text-align: center;
+    line-height: 0;
+}
+
+.power-now>div .text-info .info-pin{
+    height: 100%;
+    width: 38%;
 }
 
 .power-now>div .switch-ct {

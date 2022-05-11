@@ -14,39 +14,23 @@ namespace ownTime
     {
     public:
         struct tm timeinfo = {0};
-        ownTime(const char *ntpServer = "pool.ntp.org", const long gmtOffset_sec = 0, const int daylightOffset_sec = 0)
+        ownTime(const char *ntpServer = "pl.pool.ntp.org", const long gmtOffset_sec = 0, const int daylightOffset_sec = 0)
         {
             configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
         }
 
         void getTimeAndSetTimezone(){
-          if(WiFi.status() == WL_CONNECTED)
-            if (!getLocalTime(&timeinfo)){
-              Serial.println("Błąd pobierania czasu.");
-              return;
-            }
-          setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
-          tzset();
+          configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pl.pool.ntp.org", "time.nist.gov", "pool.ntp.org");
 
-          // Serial.print("Czas: ");
-          // Serial.print(timeinfo.tm_hour);
-          // Serial.print(":");
-          // Serial.print(timeinfo.tm_min);
-          // Serial.print(":");
-          // Serial.print(timeinfo.tm_sec);
-          // Serial.print(" ");
-          // Serial.print(timeinfo.tm_mday);
-          // Serial.print(".");
-          // Serial.print(timeinfo.tm_mon);
-          // Serial.print(".");
-          // Serial.print(timeinfo.tm_year);
-          // Serial.print(" ");
-          // Serial.print(timeinfo.tm_wday);
-          // Serial.print(" ");
-          // Serial.print(timeinfo.tm_yday);
-          // Serial.print(" ");
-          // Serial.print(timeinfo.tm_isdst);
-          // Serial.println();
+          pinMode(2, OUTPUT);
+          if(WiFi.status() == WL_CONNECTED)
+            while(!getLocalTime(&timeinfo)){
+              Serial.println("CNF TZ Błąd pobierania czasu.");
+              digitalWrite(2, HIGH);
+            }
+            digitalWrite(2, LOW);
+          // setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+          // tzset();
         }
 
         void getTime()

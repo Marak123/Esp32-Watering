@@ -574,6 +574,7 @@ class config
         rpLog.log("Succesfully loaded config file from SPIFFS");
         if(firstRun()) rpLog.log("Succesfully loaded factory config to SPIFFS");
         if(!configObject["USE_SD_CARD"].as<bool>()) SD_CARD_AVILABLE = false;
+        else initSD();
         return true;
     }
 

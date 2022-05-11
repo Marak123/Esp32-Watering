@@ -16,20 +16,21 @@ bool SD_CARD_AVILABLE = true;
 
 // Inicjacja SD_CARD
 void initSD(){
-    try{
-        int cRel = 10;
-        while(cRel > 0){
-            if (SD.begin(5)) break;
-            cRel--;
-            if(cRel == 0){
-                SD_CARD_AVILABLE = false;
-                Serial.println("SD_CARD Mount Failed");
+    if(SD_CARD_AVILABLE)
+        try{
+            int cRel = 10;
+            while(cRel > 0){
+                if (SD.begin(5)) break;
+                cRel--;
+                if(cRel == 0){
+                    SD_CARD_AVILABLE = false;
+                    Serial.println("SD_CARD Mount Failed");
+                }
             }
+        }catch(...){
+            SD_CARD_AVILABLE = false;
+            Serial.println("SD_CARD Mount Failed");
         }
-    }catch(...){
-        SD_CARD_AVILABLE = false;
-        Serial.println("SD_CARD Mount Failed");
-    }
 }
 
 // Inicjacja SPIFFS
