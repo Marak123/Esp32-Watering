@@ -71,6 +71,8 @@ namespace load{
                 wifi.hostname = object["HOSTNAME"].as<String>();
 
             dataWifi = wifi;
+
+            if(wifi.ssid.length() == 0) deepSleep("WiFi SSID jest pusty więc nie można kontynuować. Przechodę w tryb uśpienia i się nie uruchomię.");
             initWiFi();
         }catch(...){
             // error
